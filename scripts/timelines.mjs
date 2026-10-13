@@ -1,5 +1,6 @@
 import {DAY, dateToWorldTime} from './calendar.mjs';
-export const ID = 'opath-calendar';
+export {MODULE_ID as ID} from './identity.mjs';
+import {MODULE_ID as ID} from './identity.mjs';
 export const activeBranch = (state, fallbackOffset = 0) => state?.branches?.find(b => b.id === state.activeId) ?? {id:'main', name:'Campanha principal', offsetDays:fallbackOffset};
 export function planSwitch(state, worldTime, offsetDays, targetId) {
   const target = state.branches.find(b => b.id === targetId);

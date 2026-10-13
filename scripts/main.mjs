@@ -5,6 +5,8 @@ import {createRecords} from './records.mjs';
 import {matchesDay,escapeHTML,safeImage} from './record-model.mjs';
 import {HISTORY} from './history.mjs';
 import {newspaperJournals,openNewspaper,NEWSPAPER_ID} from './newspaper.mjs';
+import {createDescriptor} from './family-api.mjs';
+import {migrateLegacy} from './migration.mjs';
 
 let clock,app,timelines,records,lastNotice,companionRoot,companionObserver;
 const getConfig=()=>({mode:game.settings.get(ID,'mode'),offsetDays:activeBranch(game.settings.get(ID,'timelines'),game.settings.get(ID,'offsetDays')).offsetDays,seasonOffset:game.settings.get(ID,'seasonOffset')});
@@ -42,7 +44,7 @@ function updateCompanion(){
   const date=clock.getCurrentDate();
   const phases=moons(date.absoluteDay);
   const label=date.weekday+' · Dia '+date.day+' de '+date.cycleName+' · '+Math.abs(date.year)+' '+(date.year<0?'A.F.':'D.F.')+(date.mode==='solar'?' ('+date.repetition+'/2)':'');
-  button.innerHTML='<span class="opath-compact-label">'+escapeHTML(label)+'</span><span class="opath-compact-moons">'+phases.map(m=>'<svg class="opath-moon-icon" style="color:'+m.color+'" viewBox="0 0 24 24" role="img" aria-label="'+escapeHTML(m.name+': '+m.phase)+'"><title>'+escapeHTML(m.name+': '+m.phase)+'</title><use href="modules/opath-calendar/assets/moons.svg#'+m.icon+'"></use></svg>').join('')+'</span>';
+  button.innerHTML='<span class="opath-compact-label">'+escapeHTML(label)+'</span><span class="opath-compact-moons">'+phases.map(m=>'<svg class="opath-moon-icon" style="color:'+m.color+'" viewBox="0 0 24 24" role="img" aria-label="'+escapeHTML(m.name+': '+m.phase)+'"><title>'+escapeHTML(m.name+': '+m.phase)+'</title><use href="modules/quedaco-calendario/assets/moons.svg#'+m.icon+'"></use></svg>').join('')+'</span>';
   button.title=formatDate(date)+' — '+timelines.getActive().name+' · '+phases.map(m=>m.name+': '+m.phase).join(' · ');
   positionCompanion(root,button);
   if(root!==companionRoot&&typeof MutationObserver!=='undefined'){
@@ -62,6 +64,7 @@ Hooks.once('init',()=>{
   register('seasonOffset',{name:'Primeira estação do período solar',hint:'As estações duram 120 dias e continuam entre Anéis lunares.',type:Number,config:true,choices:Object.fromEntries(SEASONS.map((s,i)=>[i,s])),default:0});
   register('timelines',{type:Object,default:{activeId:'main',branches:[]}});
   register('diaryBooks',{type:Object,default:{}});
+  register('legacyMigrated',{type:Boolean,default:false});
 });
 Hooks.once('ready',async()=>{
   timelines=createTimelines(game,getConfig);
@@ -70,7 +73,7 @@ Hooks.once('ready',async()=>{
   const {ApplicationV2,HandlebarsApplicationMixin,DialogV2}=foundry.applications.api;
   class Calendar extends HandlebarsApplicationMixin(ApplicationV2){
     static DEFAULT_OPTIONS={id:'opath-calendar-window',classes:['opath-calendar'],window:{title:'QUEDAÇO - Calendário',resizable:true},position:{width:1160,height:850}};
-    static PARTS={body:{template:'modules/opath-calendar/templates/calendar.hbs'}};
+    static PARTS={body:{template:'modules/quedaco-calendario/templates/calendar.hbs'}};
     viewYear=null;selectedDay=null;tab='calendar';draft=null;reader=[];trash=false;
     filters={location:'',weather:'',author:''};
     captureDraft(){
@@ -227,20 +230,27 @@ Hooks.once('ready',async()=>{
     }
   }
   app=new Calendar();
-  game.modules.get(ID).api={...clock,open:()=>app.render({force:true}),getMoonPhases:()=>moons(clock.getCurrentDate().absoluteDay),getHolidays:()=>holidaysFor(clock.getCurrentDate()),lunarAge,
+  const methods={...clock,open:()=>app.render({force:true}),getMoonPhases:()=>moons(clock.getCurrentDate().absoluteDay),getHolidays:()=>holidaysFor(clock.getCurrentDate()),lunarAge,
     getTimelines:()=>timelines.getState(),switchTimeline:timelines.switchTo,getDayRecords:day=>records.list().filter(r=>matchesDay(r,day??clock.getCurrentDate().absoluteDay,activeId())),
     linkJournalToDay:async(uuid,details={})=>{
       const doc=await fromUuid(uuid);if(!doc?.testUserPermission(game.user,'OBSERVER'))throw new Error('Journal sem acesso.');
       return records.save({title:doc.name,description:'Edição / referência do dia',location:'',weather:'',image:'',visibility:'private',sharedWith:[],repeat:'once',absoluteDay:clock.getCurrentDate().absoluteDay,timelineId:activeId(),...details,links:[{uuid,label:doc.name}]});
-    }};
+    },
+    saveLocationRecord:input=>records.save({location:'',weather:'',image:'',links:[],visibility:'public',sharedWith:[],repeat:'once',...input}),
+    listPlaceNotes:ref=>records.list().filter(r=>!r.archived&&r.place?.ref===String(ref)&&r.timelineId===activeId()).map(r=>({uuid:r.uuid,title:r.title,authorId:r.authorId??null,absoluteDay:r.absoluteDay,timelineId:r.timelineId,visibility:r.visibility,place:r.place})),
+    openRecord:uuid=>records.open(uuid)};
+  const smallTime=!!game.modules.get('smalltime')?.active;
+  const module=game.modules.get(ID);
+  const descriptor=createDescriptor(module,methods,()=>({ready:true,integrations:{smalltime:smallTime,newspaper:!!newspaperJournals(game).length||!!game.modules.get(NEWSPAPER_ID)?.active}}),smallTime);
+  module.api=descriptor;
   if(game.user.isGM&&(!game.users.activeGM||game.users.activeGM.id===game.user.id)){
-    try{await timelines.initialize();await records.provision();}catch(error){ui.notifications.error('Calendário: '+error.message);}
+    try{await migrateLegacy(game);await timelines.initialize();await records.provision();}catch(error){ui.notifications.error('Calendário: '+error.message);}
   }
   lastNotice=activeId()+':'+clock.getCurrentDate().absoluteDay;
-  updateCompanion();Hooks.callAll('opath-calendar:ready',game.modules.get(ID).api);
+  updateCompanion();Hooks.callAll(ID+':ready',descriptor);Hooks.callAll('quedaco:register',descriptor);
 });
 Hooks.on('getSceneControlButtons',controls=>{if(controls.notes)controls.notes.tools[ID]={name:ID,title:'QUEDAÇO - Calendário',icon:'fas fa-calendar-days',button:true,onChange:()=>app?.render({force:true})};});
-Hooks.on('updateWorldTime',()=>{refresh();notifyHoliday();if(clock)Hooks.callAll('opath-calendar:dateChanged',clock.getCurrentDate());});
+Hooks.on('updateWorldTime',()=>{refresh();notifyHoliday();if(clock)Hooks.callAll(ID+':dateChanged',clock.getCurrentDate());});
 Hooks.on('renderSmallTimeApp',updateCompanion);
 Hooks.on('canvasReady',refresh);
 Hooks.on('updateScene',refresh);

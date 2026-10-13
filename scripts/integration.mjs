@@ -1,6 +1,7 @@
 import {DAY, worldTimeToDate, dateToWorldTime} from './calendar.mjs';
+import {MODULE_ID} from './identity.mjs';
 
-export function createClock(game, getConfig, writeOffset = offset => game.settings.set('opath-calendar', 'offsetDays', offset)) {
+export function createClock(game, getConfig, writeOffset = offset => game.settings.set(MODULE_ID, 'offsetDays', offset)) {
   function requireGM() { if (!game.user.isGM) throw new Error('Somente a Mestra pode alterar o tempo.'); }
   return {
     getCurrentDate: () => worldTimeToDate(Math.floor(game.time.worldTime), getConfig()),

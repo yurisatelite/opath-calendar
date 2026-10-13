@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.3.0 — Protocolo de Integração QUEDAÇO
+
+- Novo id `quedaco-calendario` (antes `opath-calendar`); pacote de transição `opath-calendar` mantido. Os dados antigos (configurações e diários) são copiados pela Mestra na primeira entrada, sem apagar os originais.
+- `contractVersion`: 1. Capabilities: `calendar`, `currentDate`, `currentTime`, `advanceTime`, `daylightControl` (só com SmallTime), `campaignDiary`, `moonPhases`, `holidays`, `timelines`.
+- Métodos públicos: `open`, `getStatus`, `getCurrentDate`, `getMoonPhases`, `getHolidays`, `getTimelines`, `switchTimeline`, `getDayRecords`, `linkJournalToDay`, `saveLocationRecord`, `listPlaceNotes`, `openRecord` (+ relógio: avançar/definir dia, para a Mestra).
+- Integrações opcionais reconhecidas: SmallTime (obrigatório para o relógio), QUEDAÇO - Jornal da Queda (via `getAccessibleJournals`), QUEDAÇO - Explorador (notas com local por `saveLocationRecord`/`listPlaceNotes`).
+- Sem outros módulos: calendário, luas, feriados, diário e linhas do tempo continuam funcionando.
+- Hooks: `quedaco:register`, `quedaco-calendario:ready`, `quedaco-calendario:dateChanged`.
+
 ## 0.2.2 — 13/10/2026
 
 - Contorno reservado ao dia atual; seleção e hover não acrescentam contorno.

@@ -27,17 +27,17 @@ test('Foundry bootstrap and template render both calendars, GM controls and safe
   f.app._onRender(await f.app._prepareContext(),{});
   await archiveClick();
   assert.equal(confirmations,2);
-  assert.equal(sourcePage.flags['opath-calendar'].record.archived,false);
+  assert.equal(sourcePage.flags['quedaco-calendario'].record.archived,false);
   confirmations=0;foundry.applications.api.DialogV2.confirm=async()=>{confirmations++;return true;};
   await archiveClick();
   assert.equal(confirmations,2);
-  assert.equal(sourcePage.flags['opath-calendar'].record.archived,true);
+  assert.equal(sourcePage.flags['quedaco-calendario'].record.archived,true);
   // Restore before checking the public/player calendar.
-  await sourcePage.update({'flags.opath-calendar.record.archived':false});
-  await CONFIG.queries['opath-calendar.syncRecord']({pageUuid:sourcePage.uuid});
+  await sourcePage.update({'flags.quedaco-calendario.record.archived':false});
+  await CONFIG.queries['quedaco-calendario.syncRecord']({pageUuid:sourcePage.uuid});
   f.app.element=null;
   const before = f.game.time.worldTime;
-  await f.game.settings.set('opath-calendar','mode','solar');
+  await f.game.settings.set('quedaco-calendario','mode','solar');
   html = template(await f.app._prepareContext());
   assert.equal((html.match(/data-day=/g) ?? []).length, 480);
   assert.ok(html.includes('volta 2/2'));

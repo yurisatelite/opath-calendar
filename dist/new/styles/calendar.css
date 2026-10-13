@@ -1,0 +1,65 @@
+.opath-calendar {--opath-accent:#cf565d; --opath-blue:#56a9c3; --opath-line:rgba(128,128,128,.3);}
+.opath-calendar .window-content {padding:0; overflow:auto;}
+.opath-body {padding:20px; color:var(--color-text-primary);}
+.opath-header {display:flex; gap:20px; justify-content:space-between; border-bottom:2px solid var(--opath-accent); margin-bottom:12px;}
+.opath-header h2 {font-size:22px; margin:5px 0; border:0;}
+.opath-kicker {color:var(--opath-accent); letter-spacing:3px; font-weight:700; margin:0;}
+.opath-status {display:flex; flex-direction:column; font-size:12px; gap:8px; padding-top:12px; max-width:220px;}
+.opath-toolbar,.opath-time-controls,.opath-buttons {display:flex; align-items:center; gap:8px; margin:10px 0; flex-wrap:wrap;}
+.opath-toolbar button,.opath-time-controls button,.opath-buttons button {width:auto; min-width:32px;}
+.opath-toolbar select {width:auto; margin-left:auto;}
+.opath-layout {display:grid; grid-template-columns:minmax(0,1fr) 290px; gap:20px; align-items:start;}
+.opath-year {display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:16px;}
+.opath-cycle {border:1px solid var(--opath-line); border-radius:8px; overflow:hidden;}
+.opath-cycle h3 {background:var(--opath-accent); color:white; padding:9px; margin:0; border:0; font-size:14px;}
+.opath-days {display:grid; grid-template-columns:repeat(5,minmax(0,1fr)); gap:3px; padding:6px;}
+.opath-days abbr {text-align:center; text-decoration:none; font-size:11px; font-weight:bold; padding:4px 0;}
+.opath-day {position:relative; display:flex; flex-direction:column; align-items:center; line-height:1.2; min-height:64px; width:100%; margin:0; padding:5px 1px; border:1px solid transparent; background:transparent; border-radius:4px;}
+.opath-day:hover,.opath-day.is-selected {background:rgba(86,169,195,.12);}
+.opath-calendar .opath-day {outline:none;box-shadow:none;}
+.opath-calendar .opath-day:not(.is-today) {outline:none!important;box-shadow:none!important;}
+.opath-calendar .opath-day.is-today {outline:2px solid var(--opath-blue)!important;outline-offset:-2px;font-weight:700;}
+.opath-day.is-festival {color:var(--opath-accent);background:rgba(207,86,93,.16);border-bottom:3px solid #fff;}
+.opath-day-number {font-size:16px;font-weight:700;}
+.opath-moon-pair {display:flex; gap:5px; font-size:23px;line-height:1.1;}
+.opath-moon-icon {display:inline-block;width:24px;height:24px;min-width:24px;min-height:24px;flex:0 0 24px;vertical-align:middle;overflow:visible;}
+.opath-moon-details p {display:flex;align-items:center;gap:6px;flex-wrap:wrap;}
+.opath-moon-details .opath-moon-icon {width:28px;height:28px;flex-basis:28px;}
+.opath-note-dot {position:absolute; right:3px; bottom:1px; color:var(--opath-blue);}
+.opath-details {border-left:1px solid var(--opath-line); padding-left:15px;}
+.opath-details h3 {border:0; font-size:16px;}
+.opath-event {padding:10px 0; border-bottom:1px solid var(--opath-line);}
+.opath-event p {white-space:pre-wrap; overflow-wrap:anywhere; font-size:13px;}
+.opath-form {display:flex; flex-direction:column; gap:9px; margin-top:18px; border-top:1px solid var(--opath-line); padding-top:12px;}
+.opath-form label {display:flex; flex-direction:column; gap:4px; font-size:12px;}
+.opath-form input,.opath-form select,.opath-form textarea {width:100%;}
+.opath-form .opath-checkbox {flex-direction:row; align-items:center;}
+.opath-checkbox input {width:auto;}
+.opath-muted {font-size:12px; opacity:.75;}
+.opath-private {font-size:11px; color:var(--opath-accent);}
+.opath-paper {position:absolute;bottom:2px;right:1px;font-size:13px;}
+.opath-paper.is-public {filter:drop-shadow(0 0 2px var(--opath-blue));}
+.opath-tabs,.opath-journal-toolbar,.opath-filters {display:flex;gap:10px;flex-wrap:wrap;margin:12px 0;}
+.opath-tabs button,.opath-journal-toolbar button {width:auto;}
+.opath-filters label {display:flex;flex:1;flex-direction:column;gap:4px;font-size:12px;}
+.opath-toolbar form {display:flex;gap:5px;align-items:center;}
+.opath-toolbar form label {display:flex;gap:6px;align-items:center;}
+.opath-toolbar form input {width:80px;}
+.opath-toolbar select {max-width:230px;}
+.opath-title-link {text-align:left;border:0;background:transparent;color:var(--opath-blue);text-decoration:underline;white-space:normal;height:auto;padding:3px 0;width:100%;font-weight:700;}
+.opath-holiday-title {color:var(--opath-accent);}
+.opath-journal-layout {display:grid;grid-template-columns:300px minmax(0,1fr);gap:25px;}
+.opath-editor .opath-form {margin-top:0;border-top:0;}
+.opath-editor textarea {min-height:220px;}
+.opath-attached {display:flex;justify-content:space-between;gap:8px;align-items:center;}
+.opath-attached button {width:auto;}
+.opath-read-record {padding:18px;margin:12px 0;border:1px solid var(--opath-line);border-radius:8px;}
+.opath-read-record img {max-width:100%;max-height:600px;object-fit:contain;}
+.opath-reader-text {white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.6;}
+.opath-moon-details span {font-size:20px;}
+.opath-body footer {margin-top:20px; padding-top:12px; border-top:1px solid var(--opath-line);}
+#smalltime-app:has(> .opath-smalltime-date) {overflow:visible;}
+#smalltime-app > .opath-smalltime-date {position:absolute;top:0;left:calc(100% + 8px);font-size:11px;line-height:1.4;height:auto;padding:5px;width:220px;white-space:normal;background:#282632;color:#f5f0e8;border:1px solid #cf565d;border-radius:4px;}
+.opath-compact-label {display:block;}
+.opath-compact-moons {display:flex;align-items:center;justify-content:center;gap:8px;margin-top:3px;}
+@media(max-width:760px) {.opath-layout,.opath-journal-layout {grid-template-columns:1fr;} .opath-details {border-left:0;padding-left:0;} .opath-header {flex-direction:column;gap:0;} .opath-toolbar select {margin-left:0;}}

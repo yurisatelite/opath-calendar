@@ -1,11 +1,14 @@
 export const NEWSPAPER_ID='quedaco-jornal-da-queda';
+import {findFamilyAPI} from './family-api.mjs';
 export function newspaperJournals(game) {
-  if(!game.modules.get(NEWSPAPER_ID)?.active) return [];
-  return Array.from(game.journal).filter(j=>j.flags[NEWSPAPER_ID]?.editionId && j.testUserPermission(game.user,'OBSERVER'))
-    .map(j=>({uuid:j.uuid,label:j.name,editionId:j.flags[NEWSPAPER_ID].editionId}));
+  const api=findFamilyAPI(game,NEWSPAPER_ID,'newspaper');
+  if(typeof api?.getAccessibleJournals!=='function')return [];
+  const journals=api.getAccessibleJournals();
+  if(!Array.isArray(journals))return [];
+  return journals.filter(j=>typeof j.uuid==='string'&&typeof j.label==='string').map(j=>({uuid:j.uuid,label:j.label}));
 }
 export function openNewspaper(game) {
-  const api=game.modules.get(NEWSPAPER_ID)?.api;
-  if(!api?.open) throw new Error('Ative QUEDAÇO - Jornal da Queda para consultar as edições.');
+  const api=findFamilyAPI(game,NEWSPAPER_ID,'newspaper');
+  if(typeof api?.open!=='function') throw new Error('A API integrada do Jornal da Queda não está disponível.');
   return api.open();
 }

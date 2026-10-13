@@ -21,7 +21,8 @@ export function normalizeRecord(input, users) {
   if (sharedWith.some(id => !users.some(u => u.id===id && !u.isGM))) throw new Error('Jogador selecionado não existe.');
   const links=Array.isArray(input.links)?input.links:[];
   if (links.length>20 || links.some(l => typeof l.uuid!=='string'|| !/^(JournalEntry|Actor|Item|Compendium)\.[\w.-]+$/.test(l.uuid))) throw new Error('Referência inválida.');
-  return {title,description:text(input.description,20000,'Texto'),location:text(input.location ?? '',200,'Localidade'),weather:text(input.weather ?? '',200,'Clima'),
+  const place=input.place==null?null:(()=>{const v=input.place;if(typeof v!=='object'||Array.isArray(v))throw new Error('Local inválido.');return {ref:text(v.ref,100,'Local'),name:text(v.name??'',200,'Nome do local'),regionId:text(v.regionId??'',100,'Região'),source:text(v.source??'',100,'Origem do local')};})();
+  return {place,title,description:text(input.description,20000,'Texto'),location:text(input.location ?? '',200,'Localidade'),weather:text(input.weather ?? '',200,'Clima'),
     absoluteDay:input.absoluteDay,timelineId:input.timelineId,repeat:input.repeat??'once',visibility,sharedWith,
     image:safeImage(input.image),links:links.map(l => ({uuid:l.uuid,label:text(l.label??l.uuid,200,'Título da referência')})),
     calendarMode:input.calendarMode==='solar'?'solar':'lunar',precision:input.historicalKey?'year':'day',historicalKey:input.historicalKey??null,archived:input.archived===true,revision:input.revision??null};

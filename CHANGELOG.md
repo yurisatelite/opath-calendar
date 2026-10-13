@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.2.0 — 13/10/2026
+
+- Nome atualizado para QUEDAÇO - Calendário, com ID e manifesto preservados.
+- Aba Meu diário: registros individuais por data, localidade, clima, texto e imagem.
+- Journals/páginas/Items anexados por arraste ou UUID e integração com edições acessíveis do Jornal da Queda.
+- Publicação, compartilhamento com jogadores escolhidos e despublicação sem apagar originais.
+- Papel nos dias com registros, títulos clicáveis na caixa à direita e leitura coletiva da edição do dia.
+- Luas maiores, feriados destacados/clicáveis e notificação só para a Mestra na mudança do dia.
+- Lixeira com duas confirmações, restauração e bloqueio de exclusão direta de diários gerenciados.
+- Linhas do tempo para missões no passado e retorno ao instante guardado da campanha principal.
+- Treze históricos do livro, privados à Mestra, com precisão de Anel quando o dia é desconhecido.
+- Migração dos registros 0.1.0 preservando os Journals originais.
+- Vinte e quatro testes automatizados e conferência visual das telas lunar, solar e diário.
+
+Conferência real de publicação/revogação multijogador e iluminação ainda pendente.
+
 ## 0.1.0 — 13/10/2026
 
 - Primeira versão alfa para Foundry 13, com SmallTime como dependência.

@@ -1,155 +1,230 @@
-import {DAY, CYCLES, WEEKDAYS, ABBREVIATIONS, SEASONS, moons, holidaysFor, formatDate, eventsFor, validateEvent, lunarAge} from './calendar.mjs';
+import {DAY,CYCLES,WEEKDAYS,ABBREVIATIONS,SEASONS,moons,holidaysFor,formatDate,lunarAge} from './calendar.mjs';
 import {createClock} from './integration.mjs';
+import {ID,activeBranch,createTimelines} from './timelines.mjs';
+import {createRecords} from './records.mjs';
+import {matchesDay,escapeHTML,safeImage} from './record-model.mjs';
+import {HISTORY} from './history.mjs';
+import {newspaperJournals,openNewspaper,NEWSPAPER_ID} from './newspaper.mjs';
 
-const ID = 'opath-calendar';
-const getConfig = () => ({mode: game.settings.get(ID, 'mode'), offsetDays: game.settings.get(ID, 'offsetDays'), seasonOffset: game.settings.get(ID, 'seasonOffset')});
-let clock, app;
-function refresh() { if (app?.rendered) app.render({force: true}); updateCompanion(); }
-function guard(action) { return Promise.resolve().then(action).catch(e => ui.notifications.error(e.message)); }
-function journalEvents() {
-  return game.journal.filter(j => j.flags[ID]?.event && j.testUserPermission(game.user, 'OBSERVER'))
-    .map(j => ({...j.flags[ID].event, id: j.id, title: j.name}));
+let clock,app,timelines,records,lastNotice;
+const getConfig=()=>({mode:game.settings.get(ID,'mode'),offsetDays:activeBranch(game.settings.get(ID,'timelines'),game.settings.get(ID,'offsetDays')).offsetDays,seasonOffset:game.settings.get(ID,'seasonOffset')});
+const activeId=()=>timelines?.getActive().id??'main';
+function guard(action){return Promise.resolve().then(action).catch(error=>ui.notifications.error(error.message));}
+function refresh(){if(app?.rendered) app.render({force:true});updateCompanion();}
+function notifyHoliday(){
+  if(!clock||!game.user.isGM||timelines.isSwitching())return;
+  const date=clock.getCurrentDate(),key=activeId()+':'+date.absoluteDay;
+  if(key===lastNotice)return;lastNotice=key;
+  const days=holidaysFor(date);if(days.length)ui.notifications.info('Feriado hoje: '+days.map(d=>d.name).join(' · '),{permanent:true});
 }
-
-/** A separate Opath date button, leaving SmallTime's own controls and date APIs intact. */
-function updateCompanion() {
-  const root = document.getElementById('smalltime-app');
-  if (!root || !clock) return;
-  let button = root.querySelector('[data-opath-calendar]');
-  if (!button) {
-    button = document.createElement('button');
-    button.type = 'button'; button.dataset.opathCalendar = '';
-    button.className = 'opath-smalltime-date';
-    button.addEventListener('click', () => app.render({force: true}));
-    root.append(button);
-  }
-  const date = clock.getCurrentDate();
-  button.textContent = `${date.day} · ${date.cycleName} · ${Math.abs(date.year)} ${date.year < 0 ? 'A.F.' : 'D.F.'}${date.mode === 'solar' ? ` (${date.repetition}/2)` : ''}`;
-  button.title = `${formatDate(date)} — abrir calendário`;
+function updateCompanion(){
+  const root=document.getElementById('smalltime-app');if(!root||!clock)return;
+  let button=root.querySelector('[data-opath-calendar]');
+  if(!button){button=document.createElement('button');button.type='button';button.dataset.opathCalendar='';button.className='opath-smalltime-date';button.addEventListener('click',()=>app.render({force:true}));root.append(button);}
+  const date=clock.getCurrentDate();
+  button.textContent=date.day+' · '+date.cycleName+' · '+Math.abs(date.year)+' '+(date.year<0?'A.F.':'D.F.')+(date.mode==='solar'?' ('+date.repetition+'/2)':'');
+  button.title=formatDate(date)+' — '+timelines.getActive().name;
 }
-
-Hooks.once('init', () => {
-  const register = (key, data) => game.settings.register(ID, key, {scope: 'world', config: true, onChange: () => {
-    if (app) { app.viewYear = null; app.selectedDay = null; }
+Hooks.once('init',()=>{
+  const register=(key,data)=>game.settings.register(ID,key,{scope:'world',config:false,...data,onChange:()=>{
+    if(app&&['mode','timelines'].includes(key)){app.viewYear=null;app.selectedDay=null;}
     refresh();
-  }, ...data});
-  register('mode', {name: 'Contagem exibida', hint: 'Lunar: 240 dias por Anel. Solar: 480 dias. Trocar a exibição preserva o instante atual.', type: String, choices: {lunar: 'Lunar — 240 dias', solar: 'Solar — 480 dias'}, default: 'lunar'});
-  register('offsetDays', {name: 'Marco do calendário (dias)', hint: 'Prefira o botão Calibrar data na janela para associar a data da campanha ao relógio atual.', type: Number, default: 0, config: false});
-  register('seasonOffset', {name: 'Primeira estação do período solar', hint: 'As estações continuam entre Anéis lunares e duram 120 dias. Ajuste à região da campanha.', type: Number, choices: Object.fromEntries(SEASONS.map((s, i) => [i, s])), default: 0});
+  }});
+  register('mode',{name:'Contagem exibida',hint:'Trocar lunar/solar preserva o instante.',type:String,config:true,choices:{lunar:'Lunar — 240 dias',solar:'Solar — 480 dias'},default:'lunar'});
+  register('offsetDays',{name:'Marco legado',type:Number,default:0});
+  register('seasonOffset',{name:'Primeira estação do período solar',hint:'As estações duram 120 dias e continuam entre Anéis lunares.',type:Number,config:true,choices:Object.fromEntries(SEASONS.map((s,i)=>[i,s])),default:0});
+  register('timelines',{type:Object,default:{activeId:'main',branches:[]}});
+  register('diaryBooks',{type:Object,default:{}});
 });
-
-Hooks.once('ready', () => {
-  clock = createClock(game, getConfig);
-  const {ApplicationV2, HandlebarsApplicationMixin} = foundry.applications.api;
-  class OpathCalendar extends HandlebarsApplicationMixin(ApplicationV2) {
-    static DEFAULT_OPTIONS = {id: 'opath-calendar-window', classes: ['opath-calendar'], window: {title: 'Calendário de Opath', resizable: true}, position: {width: 1000, height: 780}};
-    static PARTS = {body: {template: 'modules/opath-calendar/templates/calendar.hbs'}};
-    viewYear = null;
-    selectedDay = null;
-    editing = null;
-
-    async _prepareContext() {
-      const current = clock.getCurrentDate();
-      const viewYear = this.viewYear ?? current.year;
-      const yearStart = viewYear * current.yearDays;
-      const selectedDay = this.selectedDay ?? current.absoluteDay;
-      const selected = clock.worldTimeToDate((selectedDay - getConfig().offsetDays) * DAY);
-      const entries = journalEvents();
-      const cycles = Array.from({length: current.yearDays / 15}, (_, index) => ({
-        name: `Ciclo ${index + 1} · ${CYCLES[index % 16]}${index >= 16 ? ' · II' : ''}`,
-        days: Array.from({length: 15}, (_, d) => {
-          const absoluteDay = yearStart + index * 15 + d;
-          const date = clock.worldTimeToDate((absoluteDay - getConfig().offsetDays) * DAY);
-          const holidays = holidaysFor(date);
-          const notes = eventsFor(entries, absoluteDay, game.user);
-          return {day: d + 1, absoluteDay, current: absoluteDay === current.absoluteDay, selected: absoluteDay === selectedDay,
-            festival: holidays.length > 0, notes: notes.length, title: [...holidays.map(h => h.name), ...notes.map(n => n.title)].join(' · '), moons: moons(absoluteDay)};
+Hooks.once('ready',async()=>{
+  timelines=createTimelines(game,getConfig);
+  clock=createClock(game,getConfig,timelines.calibrateOffset);
+  records=createRecords(game);records.registerQuery();
+  const {ApplicationV2,HandlebarsApplicationMixin,DialogV2}=foundry.applications.api;
+  class Calendar extends HandlebarsApplicationMixin(ApplicationV2){
+    static DEFAULT_OPTIONS={id:'opath-calendar-window',classes:['opath-calendar'],window:{title:'QUEDAÇO - Calendário',resizable:true},position:{width:1160,height:850}};
+    static PARTS={body:{template:'modules/opath-calendar/templates/calendar.hbs'}};
+    viewYear=null;selectedDay=null;tab='calendar';draft=null;reader=[];trash=false;
+    filters={location:'',weather:'',author:''};
+    captureDraft(){
+      const form=this.element?.querySelector?.('[data-record-form]');
+      if(!form||!this.draft)return;
+      const data=new FormData(form);
+      Object.assign(this.draft,{title:String(data.get('title')??''),description:String(data.get('description')??''),location:String(data.get('location')??''),weather:String(data.get('weather')??''),image:String(data.get('image')??''),visibility:String(data.get('visibility')??'private'),repeat:String(data.get('repeat')??'once'),sharedWith:data.getAll('sharedWith')});
+    }
+    async _prepareContext(){
+      if(this.skipCapture)this.skipCapture=false;else this.captureDraft();
+      const current=clock.getCurrentDate(),viewYear=this.viewYear??current.year,selectedDay=this.selectedDay??current.absoluteDay;
+      const selected=clock.worldTimeToDate((selectedDay-getConfig().offsetDays)*DAY);
+      const entries=records.list();
+      const filtered=entries.filter(e=>(!this.filters.location||(e.location??'').toLowerCase().includes(this.filters.location.toLowerCase()))&&(!this.filters.weather||(e.weather??'').toLowerCase().includes(this.filters.weather.toLowerCase()))&&(!this.filters.author||e.authorId===this.filters.author));
+      const atDay=filtered.filter(e=>matchesDay(e,selectedDay,activeId()));
+      const cycles=Array.from({length:current.yearDays/15},(_,index)=>({
+        name:'Ciclo '+(index+1)+' · '+CYCLES[index%16]+(index>=16?' · II':''),
+        days:Array.from({length:15},(_,d)=>{
+          const absoluteDay=viewYear*current.yearDays+index*15+d;
+          const date=clock.worldTimeToDate((absoluteDay-getConfig().offsetDays)*DAY),holidays=holidaysFor(date);
+          const notes=filtered.filter(e=>matchesDay(e,absoluteDay,activeId()));
+          return {day:d+1,absoluteDay,current:absoluteDay===current.absoluteDay,selected:absoluteDay===selectedDay,festival:holidays.length>0,notes:notes.length,publicNotes:notes.some(e=>e.visibility==='public'),title:[...holidays.map(h=>h.name),...notes.map(n=>n.title)].join(' · '),moons:moons(absoluteDay)};
         })
       }));
-      const edit = entries.find(e => e.id === this.editing);
+      const draft=this.draft;
+      const players=Array.from(game.users).filter(u=>!u.isGM&&u.role>0);
       return {
-        isGM: game.user.isGM, current, currentLabel: formatDate(current), viewYear, currentTime: `${String(current.hour).padStart(2, '0')}:${String(current.minute).padStart(2, '0')}:${String(current.second).padStart(2, '0')}`,
-        mode: current.mode, modeLabel: current.mode === 'lunar' ? 'Lunar · 240 dias' : 'Solar · 480 dias',
-        isSolar: current.mode === 'solar', solarSelected: current.mode === 'solar' ? 'selected' : '', lunarSelected: current.mode === 'lunar' ? 'selected' : '',
-        cycles, weekdays: WEEKDAYS.map((name, i) => ({name, abbreviation: ABBREVIATIONS[i]})), selected, selectedLabel: formatDate(selected),
-        moons: moons(selectedDay), holidays: holidaysFor(selected), events: eventsFor(entries, selectedDay, game.user),
-        smalltime: clock.getSmallTimeStatus(), darkLinked: !!canvas?.scene?.getFlag('smalltime', 'darkness-link'),
-        cycleOptions: Array.from({length: current.yearDays / 15}, (_, i) => ({value: i + 1, label: `${i + 1} · ${CYCLES[i % 16]}${i >= 16 ? ' · II' : ''}`, selected: selected.cycle === i + 1 ? 'selected' : ''})),
-        edit, repeatOnce: !edit || edit.repeat === 'once' ? 'selected' : '', repeatLunar: edit?.repeat === 'lunar' ? 'selected' : '', repeatSolar: edit?.repeat === 'solar' ? 'selected' : ''
+        isGM:game.user.isGM,current,currentLabel:formatDate(current),currentTime:[current.hour,current.minute,current.second].map(n=>String(n).padStart(2,'0')).join(':'),
+        viewYear,modeLabel:current.mode==='lunar'?'Lunar · 240 dias':'Solar · 480 dias',lunarSelected:current.mode==='lunar'?'selected':'',solarSelected:current.mode==='solar'?'selected':'',
+        cycles,weekdays:WEEKDAYS.map((name,i)=>({name,abbreviation:ABBREVIATIONS[i]})),selected,selectedLabel:formatDate(selected),moons:moons(selectedDay),holidays:holidaysFor(selected),
+        events:atDay.map(e=>({...e,authorName:game.users.get(e.authorId)?.name??'Mestra',visibilityLabel:e.visibility==='public'?'Público':e.visibility==='shared'?'Compartilhado':'Privado'})),
+        history:game.user.isGM?entries.filter(e=>e.historicalKey&&!e.archived&&e.timelineId===activeId()&&Math.floor(e.absoluteDay/240)===selected.lunarYear):[],
+        smalltime:clock.getSmallTimeStatus(),darkLinked:!!canvas?.scene?.getFlag('smalltime','darkness-link'),branchName:timelines.getActive().name,
+        branches:(timelines.getState()?.branches??[]).map(b=>({...b,selected:b.id===activeId()?'selected':''})),
+        cycleOptions:Array.from({length:current.yearDays/15},(_,i)=>({value:i+1,label:(i+1)+' · '+CYCLES[i%16]+(i>=16?' · II':''),selected:selected.cycle===i+1?'selected':''})),
+        calendarTab:this.tab==='calendar',journalTab:this.tab==='journal',readerTab:this.tab==='reader',trash:this.trash,reader:this.reader,
+        draft,canEditDraft:!!draft,ownRecords:entries.filter(e=>e.canEdit&&!!e.archived===this.trash&&e.timelineId===activeId()).map(e=>({...e,dateLabel:formatDate(clock.worldTimeToDate((e.absoluteDay-getConfig().offsetDays)*DAY))})),
+        draftDate:draft?formatDate(clock.worldTimeToDate((draft.absoluteDay-getConfig().offsetDays)*DAY)):'',
+        privateSelected:draft?.visibility==='private'?'selected':'',sharedSelected:draft?.visibility==='shared'?'selected':'',publicSelected:draft?.visibility==='public'?'selected':'',
+        repeatOnce:draft?.repeat==='once'?'selected':'',repeatLunar:draft?.repeat==='lunar'?'selected':'',repeatSolar:draft?.repeat==='solar'?'selected':'',
+        players:players.map(u=>({id:u.id,name:u.name,checked:draft?.sharedWith?.includes(u.id)})),
+        authors:Array.from(game.users).map(u=>({id:u.id,name:u.name,selected:this.filters.author===u.id?'selected':''})),filters:this.filters,
+        locations:[...new Set(entries.map(e=>e.location).filter(Boolean))].sort(),weathers:['Ensolarado','Nublado','Chuva','Tempestade','Neve','Neblina',...new Set(entries.map(e=>e.weather).filter(Boolean))],
+        newspapers:newspaperJournals(game),newspaperActive:!!game.modules.get(NEWSPAPER_ID)?.active
       };
     }
-
-    _onRender(context, options) {
-      super._onRender(context, options);
-      const root = this.element;
-      root.querySelectorAll('[data-day]').forEach(b => b.addEventListener('click', () => {this.selectedDay = Number(b.dataset.day); this.editing = null; this.render({force: true});}));
-      root.querySelectorAll('[data-action-local]').forEach(b => b.addEventListener('click', () => guard(async () => {
-        const action = b.dataset.actionLocal;
-        const current = clock.getCurrentDate();
-        if (action === 'previous') this.viewYear = (this.viewYear ?? current.year) - 1;
-        if (action === 'next') this.viewYear = (this.viewYear ?? current.year) + 1;
-        if (action === 'today') {this.viewYear = null; this.selectedDay = null; this.editing = null;}
-        if (action === 'cancelEdit') this.editing = null;
-        if (action === 'darkness') {
-          await clock.setSmallTimeSceneLink(canvas?.scene, !canvas?.scene?.getFlag('smalltime', 'darkness-link'));
-          // The next clock update is handled by SmallTime's native updateWorldTime hook.
-          ui.notifications.info('Vínculo atualizado. A iluminação acompanhará as próximas alterações do relógio.');
+    newDraft(){
+      this.captureDraft();
+      this.draft={uuid:null,title:'',description:'',location:'',weather:'',image:'',links:[],visibility:'private',sharedWith:[],repeat:'once',absoluteDay:this.selectedDay??clock.getCurrentDate().absoluteDay,timelineId:activeId(),calendarMode:getConfig().mode};
+      this.skipCapture=true;this.tab='journal';this.render({force:true});
+    }
+    async edit(uuid){
+      const record=records.list().find(r=>r.uuid===uuid&&r.canEdit&&!r.legacy);
+      if(!record)throw new Error('Você só pode editar seus próprios registros.');
+      this.draft=structuredClone(record);this.skipCapture=true;this.tab='journal';this.render({force:true});
+    }
+    async openAll(context){
+      this.captureDraft();this.reader=[];
+      for(const record of [...context.events,...context.history]){
+        const doc=await fromUuid(record.uuid);
+        if(!doc?.testUserPermission(game.user,'OBSERVER'))continue;
+        const content=doc.documentName==='JournalEntryPage'?doc.text.content:doc.pages?.contents?.[0]?.text?.content;
+        const parser=new DOMParser().parseFromString(content??'','text/html');
+        for(const br of parser.querySelectorAll('br'))br.replaceWith('\n');
+        this.reader.push({...record,description:parser.body.textContent||record.description});
+      }
+      for(const holiday of context.holidays)this.reader.push({title:holiday.name,description:holiday.description});
+      this.tab='reader';this.render({force:true});
+    }
+    async addLink(uuid){
+      this.captureDraft();
+      if(!this.draft)return;
+      const doc=await fromUuid(uuid);
+      if(!doc?.testUserPermission(game.user,'OBSERVER'))throw new Error('Referência sem acesso.');
+      if(!['JournalEntry','JournalEntryPage','Item'].includes(doc.documentName))throw new Error('Anexe um Journal, página ou Item.');
+      if(!this.draft.links.some(l=>l.uuid===uuid))this.draft.links.push({uuid,label:doc.name});
+      this.render({force:true});
+    }
+    _onRender(context,options){
+      super._onRender(context,options);const root=this.element;
+      const bind=(selector,fn)=>root.querySelectorAll(selector).forEach(el=>el.addEventListener('click',()=>guard(()=>fn(el))));
+      bind('[data-day]',el=>{this.captureDraft();this.selectedDay=Number(el.dataset.day);this.render({force:true});});
+      bind('[data-advance]',el=>clock.advanceTime(Number(el.dataset.advance)));
+      bind('[data-open]',el=>records.open(el.dataset.open));
+      bind('[data-edit]',el=>this.edit(el.dataset.edit));
+      bind('[data-holiday]',async el=>{
+        const holiday=context.holidays[Number(el.dataset.holiday)];
+        if(holiday)await DialogV2.wait({window:{title:holiday.name},content:'<p>'+escapeHTML(holiday.description)+'</p>',buttons:[{action:'close',label:'Voltar',default:true}]});
+      });
+      bind('[data-remove-link]',el=>{this.captureDraft();this.draft.links=this.draft.links.filter(l=>l.uuid!==el.dataset.removeLink);this.render({force:true});});
+      bind('[data-archive]',async el=>{
+        const uuid=el.dataset.archive;
+        if(!await DialogV2.confirm({window:{title:'1 de 2 — Retirar anotação'},content:'<p>Retirar esta anotação do calendário e do compartilhamento?</p>'}))return;
+        if(!await DialogV2.confirm({window:{title:'2 de 2 — Confirmar lixeira'},content:'<p>Enviar para a lixeira? O texto será preservado e poderá ser restaurado pelo autor ou pela Mestra.</p>'}))return;
+        await records.archive(uuid,true);if(this.draft?.uuid===uuid)this.draft=null;refresh();
+      });
+      bind('[data-restore]',async el=>{await records.archive(el.dataset.restore,false);refresh();});
+      bind('[data-action-local]',async el=>{
+        const action=el.dataset.actionLocal,current=clock.getCurrentDate();this.captureDraft();
+        if(action==='previous')this.viewYear=(this.viewYear??current.year)-1;
+        if(action==='next')this.viewYear=(this.viewYear??current.year)+1;
+        if(action==='today'){this.viewYear=null;this.selectedDay=null;}
+        if(action==='calendar')this.tab='calendar';
+        if(action==='journal')this.tab='journal';
+        if(action==='new')return this.newDraft();
+        if(action==='trash'){this.trash=!this.trash;this.tab='journal';}
+        if(action==='all')return this.openAll(context);
+        if(action==='current'){await clock.setDate({...context.selected,hour:current.hour,minute:current.minute,second:current.second});this.viewYear=null;this.selectedDay=null;notifyHoliday();}
+        if(action==='darkness'){await clock.setSmallTimeSceneLink(canvas?.scene,!canvas?.scene?.getFlag('smalltime','darkness-link'));}
+        if(action==='newspaper')return openNewspaper(game);
+        if(action==='image'){
+          const picker=new foundry.applications.apps.FilePicker.implementation({type:'image',current:this.draft?.image,callback:path=>{this.captureDraft();this.draft.image=safeImage(path);this.skipCapture=true;this.render({force:true});}});
+          picker.browse();return;
         }
-        this.render({force: true});
-      })));
-      root.querySelectorAll('[data-advance]').forEach(b => b.addEventListener('click', () => guard(() => clock.advanceTime(Number(b.dataset.advance)))));
-      root.querySelector('[name="mode"]')?.addEventListener('change', e => guard(() => {
-        if (!game.user.isGM) throw new Error('Somente a Mestra pode alterar o calendário.');
-        return game.settings.set(ID, 'mode', e.target.value);
+        if(action==='history'){
+          if(!game.user.isGM)throw new Error('Somente a Mestra importa históricos.');
+          const known=new Set(records.list().filter(r=>r.timelineId===activeId()).map(r=>r.historicalKey));
+          for(const h of HISTORY)if(!known.has(h.key))await records.save({title:h.title,description:h.description,location:'Opath',weather:'Não informado',image:'',links:[],sharedWith:[],visibility:'private',repeat:'once',absoluteDay:h.year*240,timelineId:activeId(),historicalKey:h.key});
+          ui.notifications.info('Históricos do livro importados só para a Mestra. Dias desconhecidos permanecem sem data exata.');
+        }
+        this.render({force:true});
+      });
+      root.querySelector('[name="mode"]')?.addEventListener('change',e=>guard(()=>{
+        if(!game.user.isGM)throw new Error('Somente a Mestra altera o calendário.');
+        return game.settings.set(ID,'mode',e.target.value);
       }));
-      root.querySelector('[data-date-form]')?.addEventListener('submit', e => {
-        e.preventDefault();
-        const data = new FormData(e.target);
-        const [hour, minute, second = 0] = String(data.get('time')).split(':').map(Number);
-        const date = {year: Number(data.get('year')), cycle: Number(data.get('cycle')), day: Number(data.get('day')), hour, minute, second};
-        guard(async () => {
-          if (e.submitter?.value === 'calibrate') await clock.calibrate(date);
+      root.querySelector('[name="branch"]')?.addEventListener('change',e=>guard(async()=>{await timelines.switchTo(e.target.value);this.selectedDay=null;this.viewYear=null;notifyHoliday();refresh();}));
+      for(const name of ['location','weather','author'])root.querySelector('[data-filter="'+name+'"]')?.addEventListener('change',e=>{this.filters[name]=e.target.value;this.render({force:true});});
+      root.querySelector('[data-year-form]')?.addEventListener('submit',e=>{e.preventDefault();const value=Number(new FormData(e.target).get('viewYear'));if(Number.isSafeInteger(value)){this.viewYear=value;this.render({force:true});}});
+      root.querySelector('[data-date-form]')?.addEventListener('submit',e=>{
+        e.preventDefault();const data=new FormData(e.target),[hour,minute,second=0]=String(data.get('time')).split(':').map(Number);
+        const date={year:Number(data.get('year')),cycle:Number(data.get('cycle')),day:Number(data.get('day')),hour,minute,second};
+        guard(async()=>{
+          if(e.submitter?.value==='branch'){const id=await timelines.create(String(data.get('branchName')),date);await timelines.switchTo(id);}
+          else if(e.submitter?.value==='calibrate')await clock.calibrate(date);
           else await clock.setDate(date);
-          this.viewYear = null; this.selectedDay = null; this.render({force: true});
+          this.viewYear=null;this.selectedDay=null;notifyHoliday();refresh();
         });
       });
-      root.querySelector('[data-event-form]')?.addEventListener('submit', e => {
-        e.preventDefault();
-        const data = new FormData(e.target);
-        guard(async () => {
-          if (!game.user.isGM) throw new Error('Somente a Mestra pode cadastrar registros.');
-          const event = validateEvent({title: String(data.get('title')), description: String(data.get('description')), absoluteDay: context.selected.absoluteDay, repeat: String(data.get('repeat')), private: data.has('private')});
-          const payload = {name: event.title, [`flags.${ID}.event`]: event, ownership: {default: event.private ? CONST.DOCUMENT_OWNERSHIP_LEVELS.NONE : CONST.DOCUMENT_OWNERSHIP_LEVELS.OBSERVER}};
-          if (this.editing) await game.journal.get(this.editing).update(payload);
-          else await JournalEntry.create(payload);
-          this.editing = null; this.render({force: true});
+      const editor=root.querySelector('[data-record-form]');
+      editor?.addEventListener('submit',e=>{e.preventDefault();this.captureDraft();guard(async()=>{
+        const uuid=await records.save(this.draft,this.draft.uuid);
+        this.draft=null;this.tab='calendar';this.selectedDay=context.selected.absoluteDay;ui.notifications.info('Registro salvo no Journal.');refresh();return uuid;
+      });});
+      editor?.addEventListener('dragover',e=>e.preventDefault());
+      editor?.addEventListener('drop',e=>{
+        e.preventDefault();guard(async()=>{
+          const data=JSON.parse(e.dataTransfer.getData('text/plain'));
+          if(data.uuid)await this.addLink(data.uuid);else throw new Error('Arraste um Journal, página ou Item.');
         });
       });
-      root.querySelectorAll('[data-edit]').forEach(b => b.addEventListener('click', () => {this.editing = b.dataset.edit; this.render({force: true});}));
-      root.querySelectorAll('[data-delete]').forEach(b => b.addEventListener('click', () => guard(async () => {
-        if (!game.user.isGM) throw new Error('Somente a Mestra pode excluir registros.');
-        const entry = game.journal.get(b.dataset.delete);
-        if (!entry?.flags[ID]?.event) return;
-        const yes = await foundry.applications.api.DialogV2.confirm({window: {title: 'Excluir registro'}, content: '<p>Excluir este registro do calendário? Esta ação remove o diário associado.</p>'});
-        if (yes) {await entry.delete(); this.editing = null; this.render({force: true});}
-      })));
+      root.querySelector('[data-newspaper-select]')?.addEventListener('change',e=>{if(e.target.value)guard(()=>this.addLink(e.target.value));});
+      root.querySelector('[data-uuid-form]')?.addEventListener('submit',e=>{e.preventDefault();guard(()=>this.addLink(String(new FormData(e.target).get('uuid'))));});
     }
   }
-  app = new OpathCalendar();
-  const api = {...clock, open: () => app.render({force: true}), getMoonPhases: () => moons(clock.getCurrentDate().absoluteDay), getHolidays: () => holidaysFor(clock.getCurrentDate()), lunarAge};
-  game.modules.get(ID).api = api;
-  updateCompanion();
-  Hooks.callAll('opath-calendar:ready', api);
+  app=new Calendar();
+  game.modules.get(ID).api={...clock,open:()=>app.render({force:true}),getMoonPhases:()=>moons(clock.getCurrentDate().absoluteDay),getHolidays:()=>holidaysFor(clock.getCurrentDate()),lunarAge,
+    getTimelines:()=>timelines.getState(),switchTimeline:timelines.switchTo,getDayRecords:day=>records.list().filter(r=>matchesDay(r,day??clock.getCurrentDate().absoluteDay,activeId())),
+    linkJournalToDay:async(uuid,details={})=>{
+      const doc=await fromUuid(uuid);if(!doc?.testUserPermission(game.user,'OBSERVER'))throw new Error('Journal sem acesso.');
+      return records.save({title:doc.name,description:'Edição / referência do dia',location:'',weather:'',image:'',visibility:'private',sharedWith:[],repeat:'once',absoluteDay:clock.getCurrentDate().absoluteDay,timelineId:activeId(),...details,links:[{uuid,label:doc.name}]});
+    }};
+  if(game.user.isGM&&(!game.users.activeGM||game.users.activeGM.id===game.user.id)){
+    try{await timelines.initialize();await records.provision();}catch(error){ui.notifications.error('Calendário: '+error.message);}
+  }
+  lastNotice=activeId()+':'+clock.getCurrentDate().absoluteDay;
+  updateCompanion();Hooks.callAll('opath-calendar:ready',game.modules.get(ID).api);
 });
-
-Hooks.on('getSceneControlButtons', controls => {
-  if (controls.notes) controls.notes.tools['opath-calendar'] = {name: 'opath-calendar', title: 'Calendário de Opath', icon: 'fas fa-calendar-days', button: true, onChange: () => app?.render({force: true})};
+Hooks.on('getSceneControlButtons',controls=>{if(controls.notes)controls.notes.tools[ID]={name:ID,title:'QUEDAÇO - Calendário',icon:'fas fa-calendar-days',button:true,onChange:()=>app?.render({force:true})};});
+Hooks.on('updateWorldTime',()=>{refresh();notifyHoliday();if(clock)Hooks.callAll('opath-calendar:dateChanged',clock.getCurrentDate());});
+Hooks.on('renderSmallTimeApp',updateCompanion);
+Hooks.on('canvasReady',refresh);
+Hooks.on('updateScene',refresh);
+for(const hook of ['createJournalEntry','updateJournalEntry','deleteJournalEntry','createJournalEntryPage','updateJournalEntryPage','deleteJournalEntryPage'])Hooks.on(hook,refresh);
+Hooks.on('updateJournalEntryPage',page=>{
+  if(records?.isSource(page)&&game.user.isGM&&game.users.activeGM?.id===game.user.id)guard(()=>records.sync(page.uuid));
 });
-Hooks.on('updateWorldTime', () => {
-  refresh();
-  if (clock) Hooks.callAll('opath-calendar:dateChanged', clock.getCurrentDate());
+Hooks.on('preDeleteJournalEntryPage',page=>{
+  if(records?.isSource(page)){ui.notifications.warn('Use a lixeira do QUEDAÇO - Calendário. A exclusão direta foi bloqueada para preservar o registro.');return false;}
 });
-Hooks.on('renderSmallTimeApp', updateCompanion);
-Hooks.on('canvasReady', refresh);
-Hooks.on('updateScene', refresh);
-for (const hook of ['createJournalEntry', 'updateJournalEntry', 'deleteJournalEntry']) Hooks.on(hook, refresh);
+Hooks.on('preDeleteJournalEntry',journal=>{
+  if(records?.bookOwner(journal.id)){ui.notifications.warn('Diário protegido. Use a lixeira do calendário para retirar anotações.');return false;}
+});
+Hooks.on('createUser',()=>{if(game.user.isGM&&game.users.activeGM?.id===game.user.id)guard(()=>records.provision());});

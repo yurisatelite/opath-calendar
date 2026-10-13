@@ -1,6 +1,6 @@
 import {DAY, worldTimeToDate, dateToWorldTime} from './calendar.mjs';
 
-export function createClock(game, getConfig) {
+export function createClock(game, getConfig, writeOffset = offset => game.settings.set('opath-calendar', 'offsetDays', offset)) {
   function requireGM() { if (!game.user.isGM) throw new Error('Somente a Mestra pode alterar o tempo.'); }
   return {
     getCurrentDate: () => worldTimeToDate(Math.floor(game.time.worldTime), getConfig()),
@@ -20,7 +20,7 @@ export function createClock(game, getConfig) {
     calibrate: async date => {
       requireGM();
       const target = dateToWorldTime({...date, hour: 0, minute: 0, second: 0}, {...getConfig(), offsetDays: 0});
-      return game.settings.set('opath-calendar', 'offsetDays', target / DAY - Math.floor(game.time.worldTime / DAY));
+      return writeOffset(target / DAY - Math.floor(game.time.worldTime / DAY));
     },
     getSmallTimeStatus: () => ({active: !!game.modules.get('smalltime')?.active, version: game.modules.get('smalltime')?.version ?? null}),
     setSmallTimeSceneLink: async (scene, enabled) => {

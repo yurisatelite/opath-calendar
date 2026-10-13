@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.3.1
+
+- `listPlaceNotes` devolve `dateLabel` formatado para o QUEDAÇO - Explorador.
+
 ## 0.3.0 — Protocolo de Integração QUEDAÇO
 
 - Novo id `quedaco-calendario` (antes `opath-calendar`); pacote de transição `opath-calendar` mantido. Os dados antigos (configurações e diários) são copiados pela Mestra na primeira entrada, sem apagar os originais.

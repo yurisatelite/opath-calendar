@@ -237,7 +237,7 @@ Hooks.once('ready',async()=>{
       return records.save({title:doc.name,description:'Edição / referência do dia',location:'',weather:'',image:'',visibility:'private',sharedWith:[],repeat:'once',absoluteDay:clock.getCurrentDate().absoluteDay,timelineId:activeId(),...details,links:[{uuid,label:doc.name}]});
     },
     saveLocationRecord:input=>records.save({location:'',weather:'',image:'',links:[],visibility:'public',sharedWith:[],repeat:'once',...input}),
-    listPlaceNotes:ref=>records.list().filter(r=>!r.archived&&r.place?.ref===String(ref)&&r.timelineId===activeId()).map(r=>({uuid:r.uuid,title:r.title,authorId:r.authorId??null,absoluteDay:r.absoluteDay,timelineId:r.timelineId,visibility:r.visibility,place:r.place})),
+    listPlaceNotes:ref=>records.list().filter(r=>!r.archived&&r.place?.ref===String(ref)&&r.timelineId===activeId()).map(r=>({uuid:r.uuid,title:r.title,authorId:r.authorId??null,absoluteDay:r.absoluteDay,dateLabel:formatDate(clock.worldTimeToDate((r.absoluteDay-getConfig().offsetDays)*DAY)),timelineId:r.timelineId,visibility:r.visibility,place:r.place})),
     openRecord:uuid=>records.open(uuid)};
   const smallTime=!!game.modules.get('smalltime')?.active;
   const module=game.modules.get(ID);

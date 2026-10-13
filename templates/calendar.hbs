@@ -1,0 +1,32 @@
+<section class="opath-body">
+  <header class="opath-header">
+    <div><p class="opath-kicker">OPATH · SKYFALL</p><h2>{{currentLabel}}</h2><p>{{currentTime}} · {{current.season}} · {{modeLabel}}</p></div>
+    <div class="opath-status"><span>SmallTime: {{#if smalltime.active}}ativo{{else}}ausente{{/if}}</span><span>Iluminação desta cena: {{#if darkLinked}}vinculada ao SmallTime{{else}}vínculo desligado{{/if}}</span>{{#if isGM}}<button type="button" data-action-local="darkness">{{#if darkLinked}}Desvincular iluminação{{else}}Vincular iluminação{{/if}}</button>{{/if}}</div>
+  </header>
+  <nav class="opath-toolbar" aria-label="Navegação do calendário">
+    <button type="button" data-action-local="previous" aria-label="Anel anterior">‹</button><strong>Anel {{viewYear}}</strong><button type="button" data-action-local="next" aria-label="Próximo Anel">›</button>
+    <button type="button" data-action-local="today">Hoje</button>
+    {{#if isGM}}<select name="mode" aria-label="Contagem do calendário"><option value="lunar" {{lunarSelected}}>Lunar · 240 dias</option><option value="solar" {{solarSelected}}>Solar · 480 dias</option></select>{{/if}}
+  </nav>
+  {{#if isGM}}<div class="opath-time-controls" aria-label="Alterar tempo do mundo"><span>Tempo do mundo</span><button type="button" data-advance="-86400">−1 dia</button><button type="button" data-advance="-3600">−1 hora</button><button type="button" data-advance="3600">+1 hora</button><button type="button" data-advance="86400">+1 dia</button></div>{{/if}}
+  <div class="opath-layout">
+    <div class="opath-year">
+      {{#each cycles}}<article class="opath-cycle"><h3>{{name}}</h3>
+        <div class="opath-days">{{#each ../weekdays}}<abbr title="{{name}}">{{abbreviation}}</abbr>{{/each}}
+          {{#each days}}<button type="button" class="opath-day {{#if current}}is-today{{/if}} {{#if selected}}is-selected{{/if}} {{#if festival}}is-festival{{/if}}" data-day="{{absoluteDay}}" title="{{title}}" aria-label="Dia {{day}} {{title}}" aria-pressed="{{selected}}">
+            <span class="opath-moon-pair">{{#each moons}}<span style="color:{{color}}" title="{{name}}: {{phase}}">{{glyph}}</span>{{/each}}</span><span>{{day}}</span>{{#if notes}}<span class="opath-note-dot" title="Registros">•</span>{{/if}}
+          </button>{{/each}}
+        </div></article>{{/each}}
+    </div>
+    <aside class="opath-details"><h3>{{selectedLabel}}</h3><p>{{selected.season}} · Dia {{selected.dayOfYear}} de {{selected.yearDays}}</p>
+      <div class="opath-moon-details">{{#each moons}}<p><span style="color:{{color}}">{{glyph}} {{name}}</span> · {{phase}} · {{period}} dias</p>{{/each}}</div>
+      <h4>Feriados</h4>{{#each holidays}}<article class="opath-event"><strong>{{name}}</strong><p>{{description}}</p></article>{{else}}<p class="opath-muted">Nenhum feriado nesta data.</p>{{/each}}
+      <h4>Registros da campanha</h4>{{#each events}}<article class="opath-event"><strong>{{title}}</strong>{{#if private}}<span class="opath-private"> · Mestra</span>{{/if}}<p>{{description}}</p>{{#if ../isGM}}<div class="opath-buttons"><button type="button" data-edit="{{id}}">Editar</button><button type="button" data-delete="{{id}}">Excluir</button></div>{{/if}}</article>{{else}}<p class="opath-muted">Nenhum registro nesta data.</p>{{/each}}
+      {{#if isGM}}
+        <form data-event-form class="opath-form"><h4>{{#if edit}}Editar registro{{else}}Novo registro{{/if}}</h4><label>Título<input name="title" required maxlength="160" value="{{edit.title}}"></label><label>Descrição<textarea name="description" maxlength="10000" rows="3">{{edit.description}}</textarea></label><label>Repetição<select name="repeat"><option value="once" {{repeatOnce}}>Somente esta data</option><option value="lunar" {{repeatLunar}}>A cada Anel lunar (240 dias)</option><option value="solar" {{repeatSolar}}>A cada Anel solar (480 dias)</option></select></label><label class="opath-checkbox"><input type="checkbox" name="private" {{#if edit.private}}checked{{/if}}> Visível somente à Mestra</label><button type="submit">Salvar na data selecionada</button>{{#if edit}}<button type="button" data-action-local="cancelEdit">Cancelar edição</button>{{/if}}</form>
+        <form data-date-form class="opath-form"><h4>Data da campanha</h4><label>Anel (negativo para A.F.)<input type="number" step="1" name="year" required value="{{selected.year}}"></label><label>Ciclo<select name="cycle">{{#each cycleOptions}}<option value="{{value}}" {{selected}}>{{label}}</option>{{/each}}</select></label><label>Dia<input type="number" min="1" max="15" step="1" name="day" required value="{{selected.day}}"></label><label>Hora<input type="time" name="time" required value="{{currentTime}}" step="1"></label><button type="submit" value="move">Ir para esta data e hora</button><button type="submit" value="calibrate">Calibrar data, mantendo a hora atual</button><p class="opath-muted">Calibrar associa a data ao dia atual do relógio. Navegar e selecionar dias apenas consulta o calendário.</p></form>
+      {{/if}}
+    </aside>
+  </div>
+  <footer class="opath-muted">Estações: 120 dias. Idades: Anéis lunares de 240 dias. Feriados oficiais repetem a cada Anel lunar. SmallTime controla a iluminação pela configuração da cena.</footer>
+</section>

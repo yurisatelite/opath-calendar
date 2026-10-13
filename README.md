@@ -1,4 +1,4 @@
-# QUEDAÇO - Calendário — 0.2.1
+# QUEDAÇO - Calendário — 0.2.2
 
 Calendário e diário de campanha para Foundry VTT 13. Requer **SmallTime**.
 Integração opcional com **QUEDAÇO - Jornal da Queda**. O ID continua
@@ -15,6 +15,10 @@ automaticamente; os Journals originais são preservados como cópias privadas co
 referência ao novo registro. Não altere o ID do módulo.
 
 O botão **QUEDAÇO - Calendário** está nos controles de Notas e junto ao SmallTime.
+A barra compacta fica ao lado do relógio, liberando a área acima dele usada pelo
+FA Nexus. Ela mostra o nome do dia, número, Ciclo, Anel e as duas luas.
+No calendário, apenas o dia atual recebe contorno; feriados têm uma barra branca
+de 3 pixels na base, e a seleção de consulta usa apenas fundo destacado.
 
 ## Calendário
 - Lunar: 16 ciclos de 15 dias / 240 dias. Solar: 32 ciclos / 480 dias.

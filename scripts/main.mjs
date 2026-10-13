@@ -6,7 +6,7 @@ import {matchesDay,escapeHTML,safeImage} from './record-model.mjs';
 import {HISTORY} from './history.mjs';
 import {newspaperJournals,openNewspaper,NEWSPAPER_ID} from './newspaper.mjs';
 
-let clock,app,timelines,records,lastNotice;
+let clock,app,timelines,records,lastNotice,companionRoot,companionObserver;
 const getConfig=()=>({mode:game.settings.get(ID,'mode'),offsetDays:activeBranch(game.settings.get(ID,'timelines'),game.settings.get(ID,'offsetDays')).offsetDays,seasonOffset:game.settings.get(ID,'seasonOffset')});
 const activeId=()=>timelines?.getActive().id??'main';
 function guard(action){return Promise.resolve().then(action).catch(error=>ui.notifications.error(error.message));}
@@ -17,16 +17,41 @@ function notifyHoliday(){
   if(key===lastNotice)return;lastNotice=key;
   const days=holidaysFor(date);if(days.length)ui.notifications.info('Feriado hoje: '+days.map(d=>d.name).join(' · '),{permanent:true});
 }
+function positionCompanion(root,button){
+  if(!root.getBoundingClientRect||!button.getBoundingClientRect)return;
+  const rect=root.getBoundingClientRect(),height=button.getBoundingClientRect().height;
+  const viewportWidth=globalThis.innerWidth,viewportHeight=globalThis.innerHeight;
+  const width=Math.min(220,Math.max(140,viewportWidth-16));
+  button.style.width=width+'px';button.style.bottom='auto';
+  // Use the space next to the clock, leaving the strip above it free for FA Nexus.
+  if(rect.right+width+8<=viewportWidth){
+    button.style.left=(rect.width+8)+'px';
+    button.style.top=Math.min(0,viewportHeight-rect.top-height-8)+'px';
+  }else if(rect.left>=width+8){
+    button.style.left=(-width-8)+'px';
+    button.style.top=Math.min(0,viewportHeight-rect.top-height-8)+'px';
+  }else{
+    button.style.left=Math.max(8-rect.left,Math.min(0,viewportWidth-width-8-rect.left))+'px';
+    button.style.top=(rect.height+8)+'px';
+  }
+}
 function updateCompanion(){
   const root=document.getElementById('smalltime-app');if(!root||!clock)return;
   let button=root.querySelector('[data-opath-calendar]');
   if(!button){button=document.createElement('button');button.type='button';button.dataset.opathCalendar='';button.className='opath-smalltime-date';button.addEventListener('click',()=>app.render({force:true}));root.append(button);}
   const date=clock.getCurrentDate();
   const phases=moons(date.absoluteDay);
-  const label=date.day+' · '+date.cycleName+' · '+Math.abs(date.year)+' '+(date.year<0?'A.F.':'D.F.')+(date.mode==='solar'?' ('+date.repetition+'/2)':'');
+  const label=date.weekday+' · Dia '+date.day+' de '+date.cycleName+' · '+Math.abs(date.year)+' '+(date.year<0?'A.F.':'D.F.')+(date.mode==='solar'?' ('+date.repetition+'/2)':'');
   button.innerHTML='<span class="opath-compact-label">'+escapeHTML(label)+'</span><span class="opath-compact-moons">'+phases.map(m=>'<svg class="opath-moon-icon" style="color:'+m.color+'" viewBox="0 0 24 24" role="img" aria-label="'+escapeHTML(m.name+': '+m.phase)+'"><title>'+escapeHTML(m.name+': '+m.phase)+'</title><use href="modules/opath-calendar/assets/moons.svg#'+m.icon+'"></use></svg>').join('')+'</span>';
   button.title=formatDate(date)+' — '+timelines.getActive().name+' · '+phases.map(m=>m.name+': '+m.phase).join(' · ');
+  positionCompanion(root,button);
+  if(root!==companionRoot&&typeof MutationObserver!=='undefined'){
+    companionObserver?.disconnect();companionRoot=root;
+    companionObserver=new MutationObserver(()=>positionCompanion(root,button));
+    companionObserver.observe(root,{attributes:true,attributeFilter:['style','class']});
+  }
 }
+if(typeof window!=='undefined')window.addEventListener('resize',()=>{const root=document.getElementById('smalltime-app'),button=root?.querySelector('[data-opath-calendar]');if(button)positionCompanion(root,button);});
 Hooks.once('init',()=>{
   const register=(key,data)=>game.settings.register(ID,key,{scope:'world',config:false,...data,onChange:()=>{
     if(app&&['mode','timelines'].includes(key)){app.viewYear=null;app.selectedDay=null;}

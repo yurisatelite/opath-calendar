@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.2.2 — 13/10/2026
+
+- Contorno reservado ao dia atual; seleção e hover não acrescentam contorno.
+- Barra inferior dos feriados branca, mantendo a espessura de 3 pixels.
+- Indicador compacto ao lado do SmallTime, sem ocupar a faixa superior do FA Nexus.
+- Nome do dia e número explícito na data compacta; posição acompanha movimento do relógio e redimensionamento.
+
 ## 0.2.1 — 13/10/2026
 
 - Luas redesenhadas em SVG, com diâmetro igual em todas as fases, independentemente da fonte.

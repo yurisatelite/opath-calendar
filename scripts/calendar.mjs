@@ -72,13 +72,14 @@ export function moons(absoluteDay) {
   integer(absoluteDay, 'Dia');
   const phases = ['Nova', 'Crescente', 'Cheia', 'Minguante', 'Sem lua'];
   const glyphs = ['○', '◔', '●', '◕', '·'];
+  const icons = ['new', 'waxing', 'full', 'waning', 'absent'];
   const lapisPhase = mod(absoluteDay, 5);
   // Red moon icon progression transcribed from the 15 daily symbols in the supplied image.
   const varmahPhases = [1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 3, 3, 3, 3, 4];
   const varmahPhase = varmahPhases[mod(absoluteDay, 15)];
   return [
-    {id: 'lapis', name: 'Lápis', period: 5, color: '#429fc6', phase: phases[lapisPhase], glyph: glyphs[lapisPhase]},
-    {id: 'varmah', name: 'Varmah', period: 15, color: '#db6668', phase: phases[varmahPhase], glyph: glyphs[varmahPhase]}
+    {id: 'lapis', name: 'Lápis', period: 5, color: '#429fc6', phase: phases[lapisPhase], glyph: glyphs[lapisPhase], icon: icons[lapisPhase]},
+    {id: 'varmah', name: 'Varmah', period: 15, color: '#db6668', phase: phases[varmahPhase], glyph: glyphs[varmahPhase], icon: icons[varmahPhase]}
   ];
 }
 export function holidaysFor(date) {

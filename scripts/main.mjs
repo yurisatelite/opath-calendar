@@ -22,8 +22,10 @@ function updateCompanion(){
   let button=root.querySelector('[data-opath-calendar]');
   if(!button){button=document.createElement('button');button.type='button';button.dataset.opathCalendar='';button.className='opath-smalltime-date';button.addEventListener('click',()=>app.render({force:true}));root.append(button);}
   const date=clock.getCurrentDate();
-  button.textContent=date.day+' · '+date.cycleName+' · '+Math.abs(date.year)+' '+(date.year<0?'A.F.':'D.F.')+(date.mode==='solar'?' ('+date.repetition+'/2)':'');
-  button.title=formatDate(date)+' — '+timelines.getActive().name;
+  const phases=moons(date.absoluteDay);
+  const label=date.day+' · '+date.cycleName+' · '+Math.abs(date.year)+' '+(date.year<0?'A.F.':'D.F.')+(date.mode==='solar'?' ('+date.repetition+'/2)':'');
+  button.innerHTML='<span class="opath-compact-label">'+escapeHTML(label)+'</span><span class="opath-compact-moons">'+phases.map(m=>'<svg class="opath-moon-icon" style="color:'+m.color+'" viewBox="0 0 24 24" role="img" aria-label="'+escapeHTML(m.name+': '+m.phase)+'"><title>'+escapeHTML(m.name+': '+m.phase)+'</title><use href="modules/opath-calendar/assets/moons.svg#'+m.icon+'"></use></svg>').join('')+'</span>';
+  button.title=formatDate(date)+' — '+timelines.getActive().name+' · '+phases.map(m=>m.name+': '+m.phase).join(' · ');
 }
 Hooks.once('init',()=>{
   const register=(key,data)=>game.settings.register(ID,key,{scope:'world',config:false,...data,onChange:()=>{

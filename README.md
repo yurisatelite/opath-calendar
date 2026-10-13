@@ -1,4 +1,4 @@
-# QUEDAÇO - Calendário — 0.2.0
+# QUEDAÇO - Calendário — 0.2.1
 
 Calendário e diário de campanha para Foundry VTT 13. Requer **SmallTime**.
 Integração opcional com **QUEDAÇO - Jornal da Queda**. O ID continua
@@ -20,7 +20,11 @@ O botão **QUEDAÇO - Calendário** está nos controles de Notas e junto ao Smal
 - Lunar: 16 ciclos de 15 dias / 240 dias. Solar: 32 ciclos / 480 dias.
 - A alternância mostra o mesmo instante, sem duplicar o tempo.
 - Estações de 120 dias continuam entre Anéis lunares. Primeira estação configurável.
-- Luas ampliadas; feriados destacados. Clique no dia para ver a caixa à direita,
+- Luas em SVG com o mesmo diâmetro em todas as fases, também na barra junto ao
+  SmallTime. Passe o cursor para ver o nome e a fase de cada lua; a ausência é
+  representada por contorno pontilhado. São indicadores lunares, sem cálculo
+  automático de altura/horário da maré.
+- Feriados destacados. Clique no dia para ver a caixa à direita,
   com títulos clicáveis, feriados e **Abrir todas as anotações do dia**.
 - O papelzinho indica anotações visíveis para aquela pessoa. Registros privados de
   outra pessoa não revelam títulos, quantidade ou marcadores.

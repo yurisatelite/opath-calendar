@@ -73,10 +73,21 @@ test('Foundry bootstrap and template render both calendars, GM controls and safe
     assert.equal(refreshed.draft.description,values.description);
     assert.equal(refreshed.draft.title,values.title);
   }finally{globalThis.FormData=nativeFormData;f.app.element=null;}
+  let compact;
+  const compactRoot={querySelector:()=>compact,append:button=>{compact=button;}};
+  document.getElementById=id=>id==='smalltime-app'?compactRoot:null;
+  document.createElement=()=>({dataset:{},addEventListener(){}});
+  f.listeners.get('renderSmallTimeApp')();
+  assert.equal((compact.innerHTML.match(/class="opath-moon-icon"/g)??[]).length,2);
+  assert.ok(compact.title.includes('Lápis:'));
+  assert.ok(compact.title.includes('Varmah:'));
+  const compactBefore=compact.innerHTML;
+  f.game.time.worldTime+=86400;worldHook();
+  assert.notEqual(compact.innerHTML,compactBefore);
 });
 
 test('manifest only ships existing runtime files and requires SmallTime', async () => {
   const manifest = JSON.parse(await readFile(new URL('../module.json', import.meta.url), 'utf8'));
   assert.deepEqual(manifest.relationships.requires.map(r => r.id), ['smalltime']);
-  for (const file of [...manifest.esmodules, ...manifest.styles, 'templates/calendar.hbs']) await readFile(new URL(`../${file}`, import.meta.url));
+  for (const file of [...manifest.esmodules, ...manifest.styles, 'templates/calendar.hbs','assets/moons.svg']) await readFile(new URL(`../${file}`, import.meta.url));
 });

@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.2.1 — 13/10/2026
+
+- Luas redesenhadas em SVG, com diâmetro igual em todas as fases, independentemente da fonte.
+- Miniaturas de Lápis e Varmah na barra de data junto ao SmallTime, atualizadas com o dia atual.
+- Nome e fase de cada lua disponíveis no tooltip; ausência representada por contorno pontilhado.
+- Conferência visual e teste de atualização das miniaturas; inclusão do SVG no pacote.
+
 ## 0.2.0 — 13/10/2026
 
 - Nome atualizado para QUEDAÇO - Calendário, com ID e manifesto preservados.

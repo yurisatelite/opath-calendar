@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.3.3 — 14/10/2026 — Ajustes compactos de interface
+
+- Data e luas acima do SmallTime, limitadas à largura do relógio e à tela, acompanhando seu movimento.
+- Feriados indicados somente pela barra branca inferior de 3 pixels, sem fundo ou número vermelho. Contorno continua exclusivo do dia atual.
+- API QUEDAÇO v1, integrações e dados da campanha preservados; sem novas capabilities ou métodos.
+
 ## 0.3.2 — 14/10/2026 — Integração QUEDAÇO concluída
 
 - ID: `quedaco-calendario`; título `QUEDAÇO - Calendário`; `contractVersion: 1`.

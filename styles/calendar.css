@@ -19,7 +19,7 @@
 .opath-calendar .opath-day {outline:none;box-shadow:none;}
 .opath-calendar .opath-day:not(.is-today) {outline:none!important;box-shadow:none!important;}
 .opath-calendar .opath-day.is-today {outline:2px solid var(--opath-blue)!important;outline-offset:-2px;font-weight:700;}
-.opath-day.is-festival {color:var(--opath-accent);background:rgba(207,86,93,.16);border-bottom:3px solid #fff;}
+.opath-day.is-festival {border-bottom:3px solid #fff;}
 .opath-day-number {font-size:16px;font-weight:700;}
 .opath-moon-pair {display:flex; gap:5px; font-size:23px;line-height:1.1;}
 .opath-moon-icon {display:inline-block;width:24px;height:24px;min-width:24px;min-height:24px;flex:0 0 24px;vertical-align:middle;overflow:visible;}
@@ -59,7 +59,7 @@
 .opath-moon-details span {font-size:20px;}
 .opath-body footer {margin-top:20px; padding-top:12px; border-top:1px solid var(--opath-line);}
 #smalltime-app:has(> .opath-smalltime-date) {overflow:visible;}
-#smalltime-app > .opath-smalltime-date {position:absolute;top:0;left:calc(100% + 8px);font-size:11px;line-height:1.4;height:auto;padding:5px;width:220px;white-space:normal;background:#282632;color:#f5f0e8;border:1px solid #cf565d;border-radius:4px;}
+#smalltime-app > .opath-smalltime-date {position:absolute;bottom:calc(100% + 6px);left:0;box-sizing:border-box;font-size:11px;line-height:1.4;height:auto;padding:5px;width:100%;white-space:normal;background:#282632;color:#f5f0e8;border:1px solid #cf565d;border-radius:4px;}
 .opath-compact-label {display:block;}
 .opath-compact-moons {display:flex;align-items:center;justify-content:center;gap:8px;margin-top:3px;}
 @media(max-width:760px) {.opath-layout,.opath-journal-layout {grid-template-columns:1fr;} .opath-details {border-left:0;padding-left:0;} .opath-header {flex-direction:column;gap:0;} .opath-toolbar select {margin-left:0;}}

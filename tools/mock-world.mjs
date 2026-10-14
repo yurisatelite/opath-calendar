@@ -3,7 +3,7 @@ export function mockWorld() {
   class Collection extends Array {static get [Symbol.species](){return Array;}get(id){return this.find(doc=>doc.id===id);}get contents(){return this;}}
   const users=new Collection(...[{id:'gm',name:'Mestra',isGM:true,role:4,active:true},{id:'alice',name:'Alice',isGM:false,role:1,active:true},{id:'bob',name:'Bob',isGM:false,role:1,active:true},{id:'carol',name:'Carol',isGM:false,role:1,active:true}]);
   users.activeGM=users[0];
-  const game={user:users[0],users,modules:new Map([['quedaco-calendario',{id:'quedaco-calendario',title:'QUEDAÇO - Calendário',version:'0.3.2',active:true}],['smalltime',{active:true,version:'2.0.5'}]]),journal:new Collection(),
+  const game={user:users[0],users,modules:new Map([['quedaco-calendario',{id:'quedaco-calendario',title:'QUEDAÇO - Calendário',version:'0.3.3',active:true}],['smalltime',{active:true,version:'2.0.5'}]]),journal:new Collection(),
     settings:{register(id,key,data){if(!values.has(key))values.set(key,structuredClone(data.default));},get(id,key){return values.get(key);},async set(id,key,value){values.set(key,structuredClone(value));}},
     time:{worldTime:349*240*86400+14*3600,async advance(seconds){this.worldTime+=seconds;}}};
   class Doc {

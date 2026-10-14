@@ -9,7 +9,7 @@ test('Foundry bootstrap and template render both calendars, GM controls and safe
   const f = await fixture();
   const api=f.game.modules.get('quedaco-calendario').api;
   assert.equal(api.id,'quedaco-calendario');assert.equal(api.family,'quedaco');assert.equal(api.contractVersion,1);
-  assert.equal(api.title,'QUEDAÇO - Calendário');assert.equal(api.version,'0.3.2');
+  assert.equal(api.title,'QUEDAÇO - Calendário');assert.equal(api.version,'0.3.3');
   assert.ok(f.emitted.some(([hook,descriptor])=>hook==='quedaco:register'&&descriptor===api));
   assert.equal(f.game.modules.has('quedaco'),false);
   for(const [cap,value]of Object.entries(api.capabilities))if(value)assert.equal(typeof api[CAPABILITY_METHODS[cap]],'function');

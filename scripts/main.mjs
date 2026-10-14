@@ -21,21 +21,13 @@ function notifyHoliday(){
 }
 function positionCompanion(root,button){
   if(!root.getBoundingClientRect||!button.getBoundingClientRect)return;
-  const rect=root.getBoundingClientRect(),height=button.getBoundingClientRect().height;
-  const viewportWidth=globalThis.innerWidth,viewportHeight=globalThis.innerHeight;
-  const width=Math.min(220,Math.max(140,viewportWidth-16));
+  const rect=root.getBoundingClientRect(),viewportWidth=globalThis.innerWidth;
+  const width=Math.min(rect.width,Math.max(0,viewportWidth-16));
   button.style.width=width+'px';button.style.bottom='auto';
-  // Use the space next to the clock, leaving the strip above it free for FA Nexus.
-  if(rect.right+width+8<=viewportWidth){
-    button.style.left=(rect.width+8)+'px';
-    button.style.top=Math.min(0,viewportHeight-rect.top-height-8)+'px';
-  }else if(rect.left>=width+8){
-    button.style.left=(-width-8)+'px';
-    button.style.top=Math.min(0,viewportHeight-rect.top-height-8)+'px';
-  }else{
-    button.style.left=Math.max(8-rect.left,Math.min(0,viewportWidth-width-8-rect.left))+'px';
-    button.style.top=(rect.height+8)+'px';
-  }
+  button.style.left=Math.max(8-rect.left,Math.min(0,viewportWidth-width-8-rect.left))+'px';
+  // Measure after constraining the width so wrapped text stays above the clock.
+  const height=button.getBoundingClientRect().height;
+  button.style.top=(-height-6)+'px';
 }
 function updateCompanion(){
   const root=document.getElementById('smalltime-app');if(!root||!clock)return;

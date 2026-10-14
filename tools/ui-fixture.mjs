@@ -1,8 +1,8 @@
 import {mockWorld} from './mock-world.mjs';
 /** Lightweight Foundry stand-in for template checks; never used in the shipped module. */
 export async function fixture() {
-  const hooks = new Map(),listeners=new Map(), f=mockWorld();
-  globalThis.Hooks = {once(name, callback) {hooks.set(name, callback);}, on(name,callback) {listeners.set(name,callback);}, callAll() {}};
+  const hooks = new Map(),listeners=new Map(), emitted=[], f=mockWorld();
+  globalThis.Hooks = {once(name, callback) {hooks.set(name, callback);}, on(name,callback) {listeners.set(name,callback);}, callAll(...args) {emitted.push(args);}};
   class Application {render() {this.rendered = true; return this;} _onRender() {}}
   globalThis.foundry = {applications:{api:{ApplicationV2:Application, HandlebarsApplicationMixin:Base => Base,DialogV2:{}}}};
   globalThis.document = {getElementById: () => null};
@@ -14,5 +14,5 @@ export async function fixture() {
   hooks.get('init')();
   await hooks.get('ready')();
   const app = game.modules.get('quedaco-calendario').api.open();
-  return {app, game:f.game, values:f.values,listeners};
+  return {app, game:f.game, values:f.values,listeners,emitted};
 }

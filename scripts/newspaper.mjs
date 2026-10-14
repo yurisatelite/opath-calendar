@@ -5,7 +5,7 @@ export function newspaperJournals(game) {
   if(typeof api?.getAccessibleJournals!=='function')return [];
   const journals=api.getAccessibleJournals();
   if(!Array.isArray(journals))return [];
-  return journals.filter(j=>typeof j.uuid==='string'&&typeof j.label==='string').map(j=>({uuid:j.uuid,label:j.label}));
+  return journals.filter(j=>typeof j?.uuid==='string'&&typeof j?.label==='string').map(j=>({uuid:j.uuid,label:j.label}));
 }
 export function openNewspaper(game) {
   const api=findFamilyAPI(game,NEWSPAPER_ID,'newspaper');

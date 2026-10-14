@@ -5,6 +5,10 @@ export function createClock(game, getConfig, writeOffset = offset => game.settin
   function requireGM() { if (!game.user.isGM) throw new Error('Somente a Mestra pode alterar o tempo.'); }
   return {
     getCurrentDate: () => worldTimeToDate(Math.floor(game.time.worldTime), getConfig()),
+    getCurrentTime: () => {
+      const {hour,minute,second}=worldTimeToDate(Math.floor(game.time.worldTime),getConfig());
+      return {hour,minute,second};
+    },
     worldTimeToDate: time => worldTimeToDate(time, getConfig()),
     dateToWorldTime: date => dateToWorldTime(date, getConfig()),
     advanceTime: async seconds => {
@@ -28,6 +32,7 @@ export function createClock(game, getConfig, writeOffset = offset => game.settin
       requireGM();
       if (!game.modules.get('smalltime')?.active) throw new Error('Ative o SmallTime para vincular a iluminação.');
       if (!scene) throw new Error('Abra uma cena para vincular a iluminação.');
+      if (scene.documentName!=='Scene'||scene.inCompendium) throw new Error('O vínculo de iluminação aceita apenas cenas do mundo.');
       return scene.setFlag('smalltime', 'darkness-link', enabled === true);
     }
   };

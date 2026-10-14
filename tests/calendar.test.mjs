@@ -108,9 +108,11 @@ test('calibrating campaign date preserves clock and writes only an integer-day e
 });
 test('only GMs can set dates or link SmallTime illumination, and no scene-light writer is introduced', async () => {
   const f = fixture(), flags = [];
-  const scene = {setFlag: async (...args) => flags.push(args)};
+  const scene = {documentName:'Scene',setFlag: async (...args) => flags.push(args)};
   await f.clock.setSmallTimeSceneLink(scene, true);
   assert.deepEqual(flags, [['smalltime','darkness-link',true]]);
+  await assert.rejects(f.clock.setSmallTimeSceneLink({...scene,documentName:'JournalEntry'},true));
+  await assert.rejects(f.clock.setSmallTimeSceneLink({...scene,inCompendium:true},true));
   f.game.user.isGM = false;
   await assert.rejects(f.clock.advanceTime(1));
   await assert.rejects(f.clock.setDate({year:1, cycle:1, day:1}));

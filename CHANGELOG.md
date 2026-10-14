@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.3.2 — 14/10/2026 — Integração QUEDAÇO concluída
+
+- ID: `quedaco-calendario`; título `QUEDAÇO - Calendário`; `contractVersion: 1`.
+- Capabilities: `calendar`, `currentDate`, `currentTime`, `advanceTime`, `daylightControl` (SmallTime ativo), `campaignDiary`, `moonPhases`, `holidays`, `timelines`, `placeNotes`. Cada uma corresponde a um método real.
+- Métodos: `open`, `getStatus`, `getCurrentDate`, `getCurrentTime`, `worldTimeToDate`, `dateToWorldTime`, `advanceTime`, `setDate`, `calibrate`, `getSmallTimeStatus`, `setSmallTimeSceneLink`, `getMoonPhases`, `getHolidays`, `lunarAge`, `getTimelines`, `switchTimeline`, `getDayRecords`, `linkJournalToDay`, `saveLocationRecord`, `listPlaceNotes`, `openRecord`.
+- Registro público `quedaco:register` verificado depois do ready; API e capabilities congeladas.
+- Integrações opcionais reconhecidas por API: QUEDAÇO principal, Jornal da Queda (newspaper/open/getAccessibleJournals), Explorador (registros por localidade). Declaradas em relationships.modules e recommends. SmallTime permanece obrigatório na instalação.
+- Sem outros QUEDAÇO: calendário, horário, diário, luas, feriados e linhas do tempo disponíveis. getStatus é leitura pura; não invoca APIs de outros módulos.
+- Consultas públicas de registros retornam somente resumos autorizados. Jogadores não recebem snapshots de linhas do tempo inativas.
+- Migração do ID antigo preserva diários, páginas, permissões, configurações e datas; não altera o relógio nem documentos do Jornal da Queda. Migração repetida não sobrescreve os dados novos.
+- Nova consulta getCurrentTime e atualização da interface quando outra API QUEDAÇO é registrada.
+- Manifesto canônico: quedaco-calendario.json. O module.json antigo permanece como pacote de transição, sem iniciar um segundo calendário.
+- 31 testes passaram. Validação com servidor Foundry e jogadores reais permanece necessária após instalação/migração.
+
 ## 0.3.1
 
 - `listPlaceNotes` devolve `dateLabel` formatado para o QUEDAÇO - Explorador.

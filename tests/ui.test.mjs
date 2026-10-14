@@ -3,9 +3,20 @@ import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
 import Handlebars from 'handlebars';
 import {fixture} from '../tools/ui-fixture.mjs';
+import {CAPABILITY_METHODS} from '../scripts/family-api.mjs';
 
 test('Foundry bootstrap and template render both calendars, GM controls and safe player notes', async () => {
   const f = await fixture();
+  const api=f.game.modules.get('quedaco-calendario').api;
+  assert.equal(api.id,'quedaco-calendario');assert.equal(api.family,'quedaco');assert.equal(api.contractVersion,1);
+  assert.equal(api.title,'QUEDAÇO - Calendário');assert.equal(api.version,'0.3.2');
+  assert.ok(f.emitted.some(([hook,descriptor])=>hook==='quedaco:register'&&descriptor===api));
+  assert.equal(f.game.modules.has('quedaco'),false);
+  for(const [cap,value]of Object.entries(api.capabilities))if(value)assert.equal(typeof api[CAPABILITY_METHODS[cap]],'function');
+  const stateBefore=JSON.stringify([...f.values]),timeBefore=f.game.time.worldTime,journalCount=f.game.journal.length;
+  assert.equal(api.getStatus().ready,true);api.getStatus();api.getCurrentTime();
+  assert.equal(JSON.stringify([...f.values]),stateBefore);assert.equal(f.game.time.worldTime,timeBefore);assert.equal(f.game.journal.length,journalCount);
+  const state=api.getTimelines();state.branches[0].name='Alteração externa';assert.notEqual(f.values.get('timelines').branches[0].name,'Alteração externa');
   const source = await readFile(new URL('../templates/calendar.hbs', import.meta.url), 'utf8');
   const template = Handlebars.compile(source);
   let html = template(await f.app._prepareContext());
@@ -46,6 +57,8 @@ test('Foundry bootstrap and template render both calendars, GM controls and safe
   html = template(await f.app._prepareContext());
   assert.ok(!html.includes('Segredo da Mestra'));
   assert.ok(html.includes('Viagem da guilda'));
+  assert.ok(api.getDayRecords().every(record=>!Object.hasOwn(record,'description')&&!Object.hasOwn(record,'links')));
+  assert.ok(api.getTimelines().branches.length===1);
   assert.ok(!html.includes('data-date-form'));
   assert.ok(!html.includes('data-advance='));
   assert.ok(!html.includes('name="branch"'));

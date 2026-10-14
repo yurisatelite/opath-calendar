@@ -1,18 +1,25 @@
-# QUEDAÇO - Calendário — 0.2.2
+# QUEDAÇO - Calendário — 0.3.2
 
 Calendário e diário de campanha para Foundry VTT 13. Requer **SmallTime**.
-Integração opcional com **QUEDAÇO - Jornal da Queda**. O ID continua
-`opath-calendar` para preservar a instalação, os dados e o canal de atualização.
+Integrações opcionais com **QUEDAÇO principal**, **QUEDAÇO - Jornal da Queda** e
+**QUEDAÇO - Explorador**. O ID atual é `quedaco-calendario`; os dados do antigo
+`opath-calendar` são migrados sem apagar os originais.
 
 Manifesto permanente:
-<https://github.com/yurisatelite/opath-calendar/releases/latest/download/module.json>.
+<https://github.com/yurisatelite/opath-calendar/releases/latest/download/quedaco-calendario.json>.
 
 ## Instalar / atualizar
-Use Configuração → Módulos adicionais → Instalar módulo com o endereço acima,
-ou a atualização normal na lista de módulos. Recarregue os clientes. A Mestra deve
-entrar primeiro para preparar os diários individuais. A versão 0.1.0 é migrada
-automaticamente; os Journals originais são preservados como cópias privadas com
-referência ao novo registro. Não altere o ID do módulo.
+Se você já usa `quedaco-calendario`, execute a atualização normal e recarregue.
+Se ainda usa `opath-calendar`, instale o novo manifesto em Configuração → Módulos
+adicionais → Instalar módulo. No mundo, desative **Calendário (transição)** / o
+calendário antigo e ative **QUEDAÇO - Calendário** com SmallTime. Entre como Mestra
+primeiro: configurações, linhas do tempo, diários e permissões anteriores são
+copiados para o novo namespace. O relógio global permanece intacto na migração.
+Os dados e flags antigos não são removidos. Não desinstale o antigo antes de
+conferir o resultado. Faça um backup do mundo antes da primeira migração.
+
+O endereço antigo `.../latest/download/module.json` continua entregando somente
+o pacote de transição `opath-calendar`; ele não instala o novo ID automaticamente.
 
 O botão **QUEDAÇO - Calendário** está nos controles de Notas e junto ao SmallTime.
 A barra compacta fica ao lado do relógio, liberando a área acima dele usada pelo
@@ -124,8 +131,39 @@ escreve o nível de escuridão da cena. As luas são exibidas no calendário, se
 substituir a lua única do slider ou as configurações de luz do SmallTime.
 
 ## API e testes
+
+Contrato publicado no `ready`: `family: "quedaco"`, `contractVersion: 1`,
+`id: "quedaco-calendario"`, título e versão do manifesto. O descritor e suas
+capabilities são congelados, com emissão de `quedaco:register`.
+
+Capabilities: `calendar`, `currentDate`, `currentTime`, `advanceTime`,
+`daylightControl` (quando SmallTime está ativo), `campaignDiary`, `moonPhases`,
+`holidays`, `timelines`, `placeNotes`. Só são anunciadas quando seus métodos existem.
+
+Métodos públicos: `open`, `getStatus`, `getCurrentDate`, `getCurrentTime`,
+`worldTimeToDate`, `dateToWorldTime`, `advanceTime`, `setDate`, `calibrate`,
+`getSmallTimeStatus`, `setSmallTimeSceneLink`, `getMoonPhases`, `getHolidays`,
+`lunarAge`, `getTimelines`, `switchTimeline`, `getDayRecords`, `linkJournalToDay`,
+`saveLocationRecord`, `listPlaceNotes`, `openRecord`.
+
+`getStatus()` é somente leitura e retorna disponibilidade das integrações e do
+diário. Não cria documentos nem aciona métodos de outro módulo. As consultas de
+registros devolvem resumos autorizados, sem o texto integral das notas. Jogadores
+só recebem a linha do tempo ativa; a Mestra pode consultar as demais. Métodos de
+tempo/linhas do tempo exigem Mestra e métodos de diário validam autoria/permissões.
+
+O Jornal da Queda é reconhecido por sua API pública `family: "quedaco"`, contrato
+1 e capability `newspaper`; suas referências usam `getAccessibleJournals()`.
+O Explorador usa `saveLocationRecord`, `listPlaceNotes` (com `dateLabel`) e
+`openRecord`. Ausência dessas APIs é normal. Nenhum arquivo é importado de outro
+módulo e nenhum documento do Jornal/Explorador é modificado pelo calendário.
+As integrações opcionais estão em `relationships.modules`, também declaradas em
+`relationships.recommends` para a compatibilidade nativa do Foundry 13. SmallTime
+continua como o requisito de instalação do relógio/iluminação adotado nesta mesa.
+Sem outros módulos QUEDAÇO, calendário, diário, luas, feriados e linhas do tempo
+continuam disponíveis.
 ```js
-const api = game.modules.get('opath-calendar').api;
+const api = game.modules.get('quedaco-calendario').api;
 api.open();
 api.getCurrentDate();
 api.getDayRecords();
@@ -134,7 +172,7 @@ await api.switchTimeline('main'); // só Mestra
 await api.linkJournalToDay('JournalEntry.ID', {location:'Alberich',weather:'Chuva'});
 ```
 
-`npm ci` / `npm test`: 24 testes com calendário, permissões, publicação/revogação,
+`npm ci` / `npm test`: 31 testes com calendário, contrato, migração, permissões, publicação/revogação,
 migração, lixeira com duas confirmações, notificações, rascunhos, anexos, integração
 do jornal e ida/volta no tempo. Os testes usam substitutos de documentos Foundry.
 As telas lunar, solar e diário também foram renderizadas para conferência visual.

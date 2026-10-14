@@ -5,7 +5,7 @@ import {createRecords} from './records.mjs';
 import {matchesDay,escapeHTML,safeImage} from './record-model.mjs';
 import {HISTORY} from './history.mjs';
 import {newspaperJournals,openNewspaper,NEWSPAPER_ID} from './newspaper.mjs';
-import {createDescriptor} from './family-api.mjs';
+import {createDescriptor,findFamilyAPI} from './family-api.mjs';
 import {migrateLegacy} from './migration.mjs';
 
 let clock,app,timelines,records,lastNotice,companionRoot,companionObserver;
@@ -117,7 +117,7 @@ Hooks.once('ready',async()=>{
         players:players.map(u=>({id:u.id,name:u.name,checked:draft?.sharedWith?.includes(u.id)})),
         authors:Array.from(game.users).map(u=>({id:u.id,name:u.name,selected:this.filters.author===u.id?'selected':''})),filters:this.filters,
         locations:[...new Set(entries.map(e=>e.location).filter(Boolean))].sort(),weathers:['Ensolarado','Nublado','Chuva','Tempestade','Neve','Neblina',...new Set(entries.map(e=>e.weather).filter(Boolean))],
-        newspapers:newspaperJournals(game),newspaperActive:!!game.modules.get(NEWSPAPER_ID)?.active
+        newspapers:newspaperJournals(game),newspaperActive:typeof findFamilyAPI(game,NEWSPAPER_ID,'newspaper')?.open==='function'
       };
     }
     newDraft(){
@@ -231,7 +231,10 @@ Hooks.once('ready',async()=>{
   }
   app=new Calendar();
   const methods={...clock,open:()=>app.render({force:true}),getMoonPhases:()=>moons(clock.getCurrentDate().absoluteDay),getHolidays:()=>holidaysFor(clock.getCurrentDate()),lunarAge,
-    getTimelines:()=>timelines.getState(),switchTimeline:timelines.switchTo,getDayRecords:day=>records.list().filter(r=>matchesDay(r,day??clock.getCurrentDate().absoluteDay,activeId())),
+    getTimelines:()=>{
+      const state=structuredClone(timelines.getState());
+      return game.user.isGM?state:{activeId:activeId(),branches:[{id:activeId(),name:timelines.getActive().name}]};
+    },switchTimeline:timelines.switchTo,getDayRecords:day=>records.list().filter(r=>matchesDay(r,day??clock.getCurrentDate().absoluteDay,activeId())).map(r=>({uuid:r.uuid,title:r.title,absoluteDay:r.absoluteDay,timelineId:r.timelineId,location:r.location,weather:r.weather,visibility:r.visibility})),
     linkJournalToDay:async(uuid,details={})=>{
       const doc=await fromUuid(uuid);if(!doc?.testUserPermission(game.user,'OBSERVER'))throw new Error('Journal sem acesso.');
       return records.save({title:doc.name,description:'Edição / referência do dia',location:'',weather:'',image:'',visibility:'private',sharedWith:[],repeat:'once',absoluteDay:clock.getCurrentDate().absoluteDay,timelineId:activeId(),...details,links:[{uuid,label:doc.name}]});
@@ -241,10 +244,11 @@ Hooks.once('ready',async()=>{
     openRecord:uuid=>records.open(uuid)};
   const smallTime=!!game.modules.get('smalltime')?.active;
   const module=game.modules.get(ID);
-  const descriptor=createDescriptor(module,methods,()=>({ready:true,integrations:{smalltime:smallTime,newspaper:!!newspaperJournals(game).length||!!game.modules.get(NEWSPAPER_ID)?.active}}),smallTime);
+  let ready=true;
+  const descriptor=createDescriptor(module,methods,()=>({ready,integrations:{smalltime:!!game.modules.get('smalltime')?.active,quedaco:!!findFamilyAPI(game,'quedaco'),newspaper:typeof findFamilyAPI(game,NEWSPAPER_ID,'newspaper')?.open==='function',explorer:!!findFamilyAPI(game,'quedaco-explorador')},diaryPrepared:!!game.journal.get(game.settings.get(ID,'diaryBooks')?.[game.user.id])}),smallTime);
   module.api=descriptor;
   if(game.user.isGM&&(!game.users.activeGM||game.users.activeGM.id===game.user.id)){
-    try{await migrateLegacy(game);await timelines.initialize();await records.provision();}catch(error){ui.notifications.error('Calendário: '+error.message);}
+    try{await migrateLegacy(game);await timelines.initialize();await records.provision();}catch(error){ready=false;ui.notifications.error('Calendário: '+error.message);}
   }
   lastNotice=activeId()+':'+clock.getCurrentDate().absoluteDay;
   updateCompanion();Hooks.callAll(ID+':ready',descriptor);Hooks.callAll('quedaco:register',descriptor);
@@ -252,6 +256,7 @@ Hooks.once('ready',async()=>{
 Hooks.on('getSceneControlButtons',controls=>{if(controls.notes)controls.notes.tools[ID]={name:ID,title:'QUEDAÇO - Calendário',icon:'fas fa-calendar-days',button:true,onChange:()=>app?.render({force:true})};});
 Hooks.on('updateWorldTime',()=>{refresh();notifyHoliday();if(clock)Hooks.callAll(ID+':dateChanged',clock.getCurrentDate());});
 Hooks.on('renderSmallTimeApp',updateCompanion);
+Hooks.on('quedaco:register',refresh);
 Hooks.on('canvasReady',refresh);
 Hooks.on('updateScene',refresh);
 for(const hook of ['createJournalEntry','updateJournalEntry','deleteJournalEntry','createJournalEntryPage','updateJournalEntryPage','deleteJournalEntryPage'])Hooks.on(hook,refresh);

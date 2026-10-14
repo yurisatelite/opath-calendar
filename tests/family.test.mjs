@@ -1,17 +1,43 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {createDescriptor,findFamilyAPI} from '../scripts/family-api.mjs';
+import {createDescriptor,findFamilyAPI,CAPABILITY_METHODS} from '../scripts/family-api.mjs';
 import {normalizeRecord} from '../scripts/record-model.mjs';
 import {migrateLegacy} from '../scripts/migration.mjs';
 import {readFile} from 'node:fs/promises';
 
 test('descritor segue o protocolo v1 e é congelado',()=>{
-  const d=createDescriptor({id:'quedaco-calendario',title:'QUEDAÇO - Calendário',version:'0.3.0'},{open(){},getCurrentDate(){}},()=>({ready:true}),true);
+  const methods=Object.fromEntries(Object.values(CAPABILITY_METHODS).map(method=>[method,()=>{}]));
+  const d=createDescriptor({id:'quedaco-calendario',title:'QUEDAÇO - Calendário',version:'0.3.2'},methods,()=>({ready:true}),true);
   assert.equal(d.family,'quedaco');assert.equal(d.contractVersion,1);assert.equal(d.id,'quedaco-calendario');
   assert.ok(Object.isFrozen(d));
-  for(const [cap,on] of Object.entries(d.capabilities)){assert.equal(typeof on,'boolean');}
+  for(const [cap,on] of Object.entries(d.capabilities)){assert.equal(typeof on,'boolean');if(on)assert.equal(typeof d[CAPABILITY_METHODS[cap]],'function');}
   assert.equal(d.capabilities.daylightControl,true);
   assert.equal(typeof d.open,'function');assert.equal(typeof d.getStatus,'function');
+});
+
+test('capabilities ausentes não são anunciadas e SmallTime ausente desativa daylightControl',()=>{
+  const d=createDescriptor({id:'quedaco-calendario'},{open(){},setSmallTimeSceneLink(){}},()=>({ready:true}),false);
+  assert.equal(d.capabilities.calendar,true);assert.equal(d.capabilities.currentTime,false);assert.equal(d.capabilities.daylightControl,false);
+});
+
+test('migração mantém diário, páginas, datas e permissões, sem alterar documentos do Jornal',async()=>{
+  const {mockWorld}=await import('../tools/mock-world.mjs');const f=mockWorld();
+  const stored=new Map();
+  f.game.settings.storage=new Map([['world',{getSetting:key=>stored.get(key)}]]);
+  const timelines={activeId:'past',branches:[{id:'main',name:'Principal',worldTime:83192000,offsetDays:20},{id:'past',name:'Passado',worldTime:-9000000,offsetDays:20}]};
+  stored.set('opath-calendar.timelines',{value:JSON.stringify(timelines)});
+  const book=await f.create({name:'Diário antigo',ownership:{default:0,alice:3},flags:{'opath-calendar':{diaryBook:true}},pages:[{name:'Nota antiga',type:'text',text:{content:'Conteúdo privado'},flags:{'opath-calendar':{record:{absoluteDay:-100,timelineId:'past',visibility:'private'}}}}]});
+  stored.set('opath-calendar.diaryBooks',{value:{alice:book.id}});
+  const newspaper=await f.create({name:'Jornal de outro módulo',flags:{'quedaco-jornal-da-queda':{editionId:'edition'}},pages:[{name:'Página',text:{content:'Texto original'}}]});
+  const snapshot=JSON.stringify({flags:newspaper.flags,text:newspaper.pages[0].text,ownership:book.ownership,time:f.game.time.worldTime});
+  await migrateLegacy(f.game);
+  assert.deepEqual(f.values.get('timelines'),timelines);assert.equal(f.values.get('diaryBooks').alice,book.id);
+  assert.equal(book.pages[0].flags['quedaco-calendario'].record.absoluteDay,-100);
+  assert.equal(book.pages[0].flags['opath-calendar'].record.visibility,'private');
+  assert.equal(JSON.stringify({flags:newspaper.flags,text:newspaper.pages[0].text,ownership:book.ownership,time:f.game.time.worldTime}),snapshot);
+  await book.pages[0].update({'flags.quedaco-calendario.record.absoluteDay':10});
+  await migrateLegacy(f.game);assert.equal(book.pages[0].flags['quedaco-calendario'].record.absoluteDay,10);
+  f.game.user=f.game.users.get('alice');await assert.rejects(migrateLegacy(f.game),/Mestra/);
 });
 test('findFamilyAPI exige módulo ativo, contrato e capability',()=>{
   const api={family:'quedaco',contractVersion:1,id:'quedaco-x',capabilities:{newspaper:true}};

@@ -1,0 +1,61 @@
+import {createServer} from 'node:http';
+import {readFile,mkdir} from 'node:fs/promises';
+import {resolve,extname} from 'node:path';
+import {createRequire} from 'node:module';
+const require=createRequire(import.meta.url);
+const {chromium}=require(process.env.QUEDACO_PLAYWRIGHT_DIR??'playwright');
+const root=resolve(new URL('..',import.meta.url).pathname.replace(/^\/(\w:)/,'$1'));
+const server=createServer(async(req,res)=>{
+  try{
+    const pathname=new URL(req.url,'http://localhost').pathname.replace('/modules/quedaco-calendario/','/');
+    const file=resolve(root,'.'+pathname);
+    if(!file.startsWith(root))throw new Error('Invalid path');
+    res.setHeader('Content-Type',({'.mjs':'text/javascript','.css':'text/css','.svg':'image/svg+xml','.json':'application/json'})[extname(file)]??'text/plain');
+    res.end(await readFile(file));
+  }catch{res.statusCode=404;res.end();}
+});
+await new Promise(done=>server.listen(0,'127.0.0.1',done));
+const base='http://127.0.0.1:'+server.address().port;
+const browser=await chromium.launch({headless:true});
+try{
+  const page=await browser.newPage({viewport:{width:375,height:650}}),errors=[];
+  page.on('pageerror',e=>errors.push(e.message));
+  await page.goto(base+'/module.json');
+  await page.setContent('<link rel="stylesheet" href="'+base+'/styles/calendar.css"><style>body{background:#85858b;font:12px Arial;color:white}#fa-nexus{position:fixed;left:15px;top:350px;width:100px;height:30px;background:#222}#players{position:fixed;left:0;top:560px;width:210px;height:90px;background:#444}</style><div id="fa-nexus">FA Nexus</div><div id="players">Jogadores</div>');
+  await page.evaluate(async base=>{
+    const {createClock}=await import(base+'/scripts/integration.mjs');
+    const {createDaylight}=await import(base+'/scripts/daylight.mjs');
+    const {createClockPanel}=await import(base+'/scripts/clock-panel.mjs');
+    const settings=new Map(),scene={name:'Mapa de teste',documentName:'Scene',environment:{darknessLevel:0},flags:{},getFlag(scope,key){return this.flags[scope+'.'+key];},async setFlag(scope,key,value){this.flags[scope+'.'+key]=value;},async update(data){this.environment.darknessLevel=data['environment.darknessLevel'];}};
+    globalThis.testGame={user:{id:'gm',isGM:true},users:{activeGM:{id:'gm'}},modules:new Map(),settings:{get:(id,key)=>settings.get(key),async set(id,key,value){settings.set(key,value);}},time:{worldTime:365*240*86400+12*3600,async advance(value){this.worldTime+=value;testPanel.update();await testLight.sync();}}};
+    globalThis.testClock=createClock(testGame,()=>({mode:'lunar',offsetDays:0,seasonOffset:0}));
+    globalThis.testLight=createDaylight(testGame,testClock,()=>scene);
+    globalThis.testPanel=createClockPanel({game:testGame,clock:testClock,daylight:testLight,open:tab=>globalThis.opened=tab,onError:error=>{throw error;}});
+    globalThis.testScene=scene;await testLight.setSceneDaylight(scene,true);testPanel.update();
+  },base);
+  await page.waitForTimeout(150);
+  if(await page.locator('.opath-compact-moons use').evaluateAll(nodes=>nodes.length!==2||nodes.some(n=>n.getBBox().width===0)))throw new Error('Moon symbols did not render');
+  const bounds=await page.evaluate(()=>{const a=document.querySelector('#quedaco-clock-panel').getBoundingClientRect(),b=document.querySelector('#fa-nexus').getBoundingClientRect();return {clear:!(a.left<b.right&&a.right>b.left&&a.top<b.bottom&&a.bottom>b.top),overflow:document.documentElement.scrollWidth>innerWidth};});
+  if(!bounds.clear||bounds.overflow)throw new Error('Panel overlaps Nexus or viewport');
+  const slider=page.locator('[data-clock-slider]');
+  await slider.fill('1380');await slider.dispatchEvent('change');await page.waitForTimeout(120);
+  let state=await page.evaluate(()=>({hour:testClock.getCurrentDate().hour,dark:testScene.environment.darknessLevel,day:testClock.getCurrentDate().absoluteDay}));
+  if(state.hour!==23||state.dark!==0.85)throw new Error('Slider did not update world clock and darkness');
+  await mkdir(resolve(root,'../output'),{recursive:true});
+  await page.screenshot({path:resolve(root,'../output/quedaco-clock-night.png')});
+  await page.locator('[data-clock-slider]').fill('720');await page.locator('[data-clock-slider]').dispatchEvent('change');await page.waitForTimeout(120);
+  state=await page.evaluate(()=>({hour:testClock.getCurrentDate().hour,dark:testScene.environment.darknessLevel}));
+  if(state.hour!==12||state.dark!==0)throw new Error('Daylight did not return');
+  await page.locator('[data-clock-advance="3600"]').click();
+  if(await page.evaluate(()=>testClock.getCurrentDate().hour)!==13)throw new Error('Hour button failed');
+  await page.screenshot({path:resolve(root,'../output/quedaco-clock-day.png')});
+  const grip=page.locator('[data-clock-grip]'),box=await grip.boundingBox();
+  await page.mouse.move(box.x+5,box.y+5);await page.mouse.down();await page.mouse.move(150,100);await page.mouse.up();await page.waitForTimeout(100);
+  if(!await page.evaluate(()=>testGame.settings.get('quedaco-calendario','panelPosition')?.y<200))throw new Error('Panel drag was not saved');
+  await page.evaluate(()=>{testGame.user={id:'player',isGM:false};testPanel.update();});
+  if(!await page.locator('[data-clock-slider]').isDisabled()||await page.locator('[data-clock-advance]').count())throw new Error('Player received time controls');
+  await page.evaluate(()=>{testGame.modules.set('smalltime',{active:true});testPanel.update();});
+  if(await page.locator('[data-clock-slider]').count())throw new Error('Duplicate clock in SmallTime compatibility mode');
+  if(errors.length)throw new Error(errors.join('\n'));
+  console.log('Native panel: live slider/daylight, hour button, player read-only, drag persistence, Nexus avoidance at 375px, SmallTime compatibility passed.');
+}finally{await browser.close();server.close();}

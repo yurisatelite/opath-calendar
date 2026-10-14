@@ -9,7 +9,7 @@ test('Foundry bootstrap and template render both calendars, GM controls and safe
   const f = await fixture();
   const api=f.game.modules.get('quedaco-calendario').api;
   assert.equal(api.id,'quedaco-calendario');assert.equal(api.family,'quedaco');assert.equal(api.contractVersion,1);
-  assert.equal(api.title,'QUEDAÇO - Calendário');assert.equal(api.version,'0.3.3');
+  assert.equal(api.title,'QUEDAÇO - Calendário');assert.equal(api.version,'0.4.0');
   assert.ok(f.emitted.some(([hook,descriptor])=>hook==='quedaco:register'&&descriptor===api));
   assert.equal(f.game.modules.has('quedaco'),false);
   for(const [cap,value]of Object.entries(api.capabilities))if(value)assert.equal(typeof api[CAPABILITY_METHODS[cap]],'function');
@@ -86,21 +86,20 @@ test('Foundry bootstrap and template render both calendars, GM controls and safe
     assert.equal(refreshed.draft.description,values.description);
     assert.equal(refreshed.draft.title,values.title);
   }finally{globalThis.FormData=nativeFormData;f.app.element=null;}
-  let compact;
-  const compactRoot={querySelector:()=>compact,append:button=>{compact=button;}};
-  document.getElementById=id=>id==='smalltime-app'?compactRoot:null;
-  document.createElement=()=>({dataset:{},addEventListener(){}});
-  f.listeners.get('renderSmallTimeApp')();
-  assert.equal((compact.innerHTML.match(/class="opath-moon-icon"/g)??[]).length,2);
-  assert.ok(compact.title.includes('Lápis:'));
-  assert.ok(compact.title.includes('Varmah:'));
-  const compactBefore=compact.innerHTML;
-  f.game.time.worldTime+=86400;worldHook();
-  assert.notEqual(compact.innerHTML,compactBefore);
+  f.game.user=f.game.users.get('gm');
+  f.game.modules.delete('smalltime');
+  assert.equal(api.getClockStatus().engine,'native');
+  assert.equal(api.capabilities.daylightControl,true);
+  f.app.tab='clock';html=template(await f.app._prepareContext());
+  assert.ok(html.includes('data-light-form'));assert.ok(html.includes('data-time-form'));
+  assert.ok(html.includes('QUEDAÇO nativo'));
+  f.game.user=f.game.users.get('alice');html=template(await f.app._prepareContext());
+  assert.ok(!html.includes('data-light-form'));assert.ok(!html.includes('data-time-form'));
 });
 
-test('manifest only ships existing runtime files and requires SmallTime', async () => {
+test('manifest ships runtime files without requiring SmallTime', async () => {
   const manifest = JSON.parse(await readFile(new URL('../module.json', import.meta.url), 'utf8'));
-  assert.deepEqual(manifest.relationships.requires.map(r => r.id), ['smalltime']);
+  assert.equal((manifest.relationships.requires??[]).length,0);
+  assert.ok(manifest.relationships.recommends.some(r=>r.id==='smalltime'));
   for (const file of [...manifest.esmodules, ...manifest.styles, 'templates/calendar.hbs','assets/moons.svg']) await readFile(new URL(`../${file}`, import.meta.url));
 });

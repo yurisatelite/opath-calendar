@@ -7,7 +7,7 @@
 .opath-status {display:flex; flex-direction:column; font-size:12px; gap:8px; padding-top:12px; max-width:220px;}
 .opath-toolbar,.opath-time-controls,.opath-buttons {display:flex; align-items:center; gap:8px; margin:10px 0; flex-wrap:wrap;}
 .opath-toolbar button,.opath-time-controls button,.opath-buttons button {width:auto; min-width:32px;}
-.opath-toolbar select {width:auto; margin-left:auto;}
+.opath-toolbar select {width:auto;}
 .opath-layout {display:grid; grid-template-columns:minmax(0,1fr) 290px; gap:20px; align-items:start;}
 .opath-year {display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:16px;}
 .opath-cycle {border:1px solid var(--opath-line); border-radius:8px; overflow:hidden;}
@@ -58,8 +58,47 @@
 .opath-reader-text {white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.6;}
 .opath-moon-details span {font-size:20px;}
 .opath-body footer {margin-top:20px; padding-top:12px; border-top:1px solid var(--opath-line);}
-#smalltime-app:has(> .opath-smalltime-date) {overflow:visible;}
-#smalltime-app > .opath-smalltime-date {position:absolute;bottom:calc(100% + 6px);left:0;box-sizing:border-box;font-size:11px;line-height:1.4;height:auto;padding:5px;width:100%;white-space:normal;background:#282632;color:#f5f0e8;border:1px solid #cf565d;border-radius:4px;}
-.opath-compact-label {display:block;}
 .opath-compact-moons {display:flex;align-items:center;justify-content:center;gap:8px;margin-top:3px;}
+.opath-header {margin-bottom:8px;}
+.opath-header p {margin:6px 0 10px;}
+.opath-tabs {gap:6px;margin:8px 0;}
+.opath-tabs [aria-current="page"] {border-bottom:2px solid var(--opath-accent);}
+.opath-toolbar {gap:6px;justify-content:flex-start;}
+.opath-filter-details {margin:8px 0 14px;font-size:12px;}
+.opath-filter-details summary,.opath-advanced summary {cursor:pointer;padding:8px 0;}
+.opath-filters {align-items:end;}
+.opath-details {position:sticky;top:0;}
+.opath-details h4 {font-size:14px;margin:18px 0 8px;}
+.opath-moon-details p {margin:8px 0;font-size:12px;}
+.opath-moon-details span {font-size:15px;}
+.opath-clock-settings {max-width:750px;}
+.opath-inline-form {display:flex;gap:8px;align-items:end;flex-wrap:wrap;}
+.opath-inline-form label {display:flex;flex-direction:column;gap:5px;}
+.opath-inline-form button,.opath-clock-settings button {width:auto;}
+.opath-light-grid {display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;}
+#quedaco-clock-panel {position:fixed;z-index:50;width:200px;box-sizing:border-box;background:#22232bd9;color:#f5f0e8;border:1px solid #6c5863;border-radius:5px;box-shadow:0 2px 6px #0005;font:11px/1.35 Arial,sans-serif;}
+#quedaco-clock-panel button {box-sizing:border-box;color:inherit;cursor:pointer;margin:0;border:0;box-shadow:none;background:transparent;height:auto;min-height:0;line-height:1.2;padding:2px;}
+#quedaco-clock-panel button:hover {background:#ffffff18;}
+.quedaco-clock-tools {display:flex;justify-content:flex-end;height:15px;}
+#quedaco-clock-panel .quedaco-clock-tools button {width:22px;font-size:12px;}
+#quedaco-clock-panel [data-clock-grip] {margin-right:auto;cursor:move;touch-action:none;}
+#quedaco-clock-panel .quedaco-clock-date {display:flex;align-items:center;justify-content:space-between;gap:6px;width:100%;padding:4px 7px;border-bottom:1px solid #cf565d;}
+.quedaco-clock-date>span:first-child {flex:1;}
+.quedaco-clock-date .opath-compact-moons {margin:0;gap:4px;}
+.quedaco-clock-date .opath-moon-icon {width:20px;height:20px;min-width:20px;min-height:20px;flex-basis:20px;}
+.quedaco-sky {position:relative;height:24px;overflow:hidden;}
+.quedaco-sky input[type=range] {position:absolute;inset:0;width:100%;height:24px;margin:0;padding:0;appearance:none;background:transparent;border:0;cursor:ew-resize;opacity:1;}
+.quedaco-sky input[type=range]::-webkit-slider-runnable-track {background:transparent;height:24px;}
+.quedaco-sky input[type=range]::-webkit-slider-thumb {appearance:none;background:transparent;width:20px;height:24px;border:0;box-shadow:none;}
+.quedaco-sky input[type=range]::-moz-range-track {background:transparent;}
+.quedaco-sky input[type=range]::-moz-range-thumb {background:transparent;border:0;width:20px;}
+.quedaco-sky input:disabled {cursor:default;}
+.quedaco-sun {position:absolute;pointer-events:none;left:clamp(10px,var(--sun-position),calc(100% - 10px));top:1px;transform:translateX(-50%);font-size:22px;color:#fff09c;text-shadow:0 0 6px #fff800;line-height:22px;}
+.quedaco-sun.is-night {color:#e2e8f6;text-shadow:0 0 3px #eee;}
+.quedaco-clock-buttons {display:flex;align-items:center;justify-content:center;height:25px;}
+#quedaco-clock-panel .quedaco-clock-buttons button {width:27px;font-size:17px;}
+#quedaco-clock-panel [data-clock-time] {flex:1;font-size:11px;font-weight:bold;}
+#quedaco-clock-panel.is-crowded {width:100px!important;}
+#quedaco-clock-panel.is-crowded .quedaco-native-clock,#quedaco-clock-panel.is-crowded .opath-compact-moons {display:none;}
 @media(max-width:760px) {.opath-layout,.opath-journal-layout {grid-template-columns:1fr;} .opath-details {border-left:0;padding-left:0;} .opath-header {flex-direction:column;gap:0;} .opath-toolbar select {margin-left:0;}}
+@media(max-width:560px) {.opath-year {grid-template-columns:1fr;} .opath-body {padding:12px;} .opath-filters {flex-direction:column;align-items:stretch;} .opath-light-grid {grid-template-columns:1fr;} .opath-details {position:static;} .opath-header h2 {font-size:18px;}}

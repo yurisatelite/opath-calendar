@@ -1,6 +1,6 @@
-# QUEDAÇO - Calendário — 0.3.3
+# QUEDAÇO - Calendário — 0.4.0
 
-Calendário e diário de campanha para Foundry VTT 13. Requer **SmallTime**.
+Calendário, relógio nativo e diário de campanha para Foundry VTT 13. **SmallTime é opcional**.
 Integrações opcionais com **QUEDAÇO principal**, **QUEDAÇO - Jornal da Queda** e
 **QUEDAÇO - Explorador**. O ID atual é `quedaco-calendario`; os dados do antigo
 `opath-calendar` são migrados sem apagar os originais.
@@ -12,7 +12,7 @@ Manifesto permanente:
 Se você já usa `quedaco-calendario`, execute a atualização normal e recarregue.
 Se ainda usa `opath-calendar`, instale o novo manifesto em Configuração → Módulos
 adicionais → Instalar módulo. No mundo, desative **Calendário (transição)** / o
-calendário antigo e ative **QUEDAÇO - Calendário** com SmallTime. Entre como Mestra
+calendário antigo e ative **QUEDAÇO - Calendário**. Entre como Mestra
 primeiro: configurações, linhas do tempo, diários e permissões anteriores são
 copiados para o novo namespace. O relógio global permanece intacto na migração.
 Os dados e flags antigos não são removidos. Não desinstale o antigo antes de
@@ -21,9 +21,13 @@ conferir o resultado. Faça um backup do mundo antes da primeira migração.
 O endereço antigo `.../latest/download/module.json` continua entregando somente
 o pacote de transição `opath-calendar`; ele não instala o novo ID automaticamente.
 
-O botão **QUEDAÇO - Calendário** está nos controles de Notas e junto ao SmallTime.
-A barra compacta fica acima do relógio, com a mesma largura do SmallTime,
-sem ocupar uma coluna lateral. Ela mostra o nome do dia, número, Ciclo, Anel e as duas luas.
+O botão **QUEDAÇO - Calendário** está nos controles de Notas e no painel compacto.
+O painel reúne data, duas luas e relógio nativo, sem ocupar uma coluna lateral.
+Evita os retângulos visíveis de Nexus, jogadores, controles e janelas; pode ser
+arrastado por ⠿, com posição salva por usuário/navegador. ↺ retoma o posicionamento
+automático. Se não houver espaço para o painel completo, recolhe para um atalho.
+Filtros ficam recolhidos, e horário/iluminação têm aba própria. Histórico e viagem
+no tempo ficam em uma seção recolhida do painel do dia.
 No calendário, apenas o dia atual recebe contorno; feriados têm uma barra branca
 de 3 pixels na base, sem fundo ou texto vermelho. A seleção de consulta usa apenas fundo destacado.
 
@@ -44,6 +48,33 @@ de 3 pixels na base, sem fundo ou texto vermelho. A seleção de consulta usa ap
   usa o dia selecionado e mantém a hora atual.
 - A Mestra recebe uma notificação de feriado ao entrar em um novo dia com evento,
   sem repetir o aviso a cada atualização do relógio.
+
+## Relógio nativo e iluminação
+
+1. Atualize, desative SmallTime em Gerenciar módulos e recarregue o mundo.
+2. O painel nativo aparece com data/luas, sol/lua arrastável e botões de ±10 minutos / ±1 hora.
+3. Abra **Relógio e iluminação** e clique **Ligar iluminação nesta cena**.
+4. Configure amanhecer/anoitecer e escuridão diurna/noturna. As transições são graduais.
+
+Arrastar o sol/lua muda hora e minuto dentro do mesmo dia; os botões podem cruzar
+a meia-noite. Apenas a Mestra altera o tempo. Jogadores veem o painel em leitura.
+As horas permanecem de 24h. Não há progressão automática em tempo real nesta versão.
+
+A iluminação é opt-in por cena, usando `flags.quedaco-calendario.daylight` e
+`environment.darknessLevel` no Foundry 13. Só a Mestra ativa responsável escreve na
+cena ativa, e o bloqueio de escuridão da cena é respeitado. Desligar preserva a
+última iluminação; não restaura nem apaga configurações de luz. Os limites e
+horários solares são configurações do mundo, o vínculo é individual por cena.
+
+Com SmallTime ativo, ele tem prioridade exclusiva de iluminação; nosso painel
+mostra apenas data/luas e evita o relógio externo. Não escondemos nem alteramos
+o painel ou flags do SmallTime. Para o modo nativo, desative SmallTime; não precisa
+desinstalá-lo. O modo “Desativado no Calendário” suspende nosso controlador,
+mantendo o relógio visível, mas não desativa controles de outros módulos.
+
+Implementação própria inspirada na interação do SmallTime, não uma cópia integral
+do módulo. As duas luas continuam como indicadores de fase: não calculam a maré
+nem ajustam automaticamente a escuridão noturna nesta versão.
 
 ## Meu diário
 Cada jogador recebe um Journal particular, com páginas para seus registros.
@@ -125,10 +156,9 @@ Hooks de alterações de páginas sincronizam edições feitas no Journal nativo
 a Mestra responsável está conectada. Prefira o editor do calendário para gerenciar
 texto, metadados e visibilidade em conjunto.
 
-A iluminação continua sob o SmallTime: ambos usam `game.time.worldTime`, e o
-calendário apenas altera o tempo e o vínculo `smalltime.darkness-link`. Ele não
-escreve o nível de escuridão da cena. As luas são exibidas no calendário, sem
-substituir a lua única do slider ou as configurações de luz do SmallTime.
+O relógio usa `game.time.worldTime`, com ou sem SmallTime. A API legada
+`setSmallTimeSceneLink` permanece para integrações antigas; o novo controlador
+usa `setSceneDaylight` e nunca modifica flags de iluminação de outro módulo.
 
 ## API e testes
 
@@ -137,14 +167,15 @@ Contrato publicado no `ready`: `family: "quedaco"`, `contractVersion: 1`,
 capabilities são congelados, com emissão de `quedaco:register`.
 
 Capabilities: `calendar`, `currentDate`, `currentTime`, `advanceTime`,
-`daylightControl` (quando SmallTime está ativo), `campaignDiary`, `moonPhases`,
+`daylightControl` (nativo, sem depender de SmallTime), `campaignDiary`, `moonPhases`,
 `holidays`, `timelines`, `placeNotes`. Só são anunciadas quando seus métodos existem.
 
 Métodos públicos: `open`, `getStatus`, `getCurrentDate`, `getCurrentTime`,
 `worldTimeToDate`, `dateToWorldTime`, `advanceTime`, `setDate`, `calibrate`,
 `getSmallTimeStatus`, `setSmallTimeSceneLink`, `getMoonPhases`, `getHolidays`,
 `lunarAge`, `getTimelines`, `switchTimeline`, `getDayRecords`, `linkJournalToDay`,
-`saveLocationRecord`, `listPlaceNotes`, `openRecord`.
+`saveLocationRecord`, `listPlaceNotes`, `openRecord`, `getClockStatus`, `setClockMode`,
+`setDaylightConfig`, `setSceneDaylight`, `setTimeOfDay`.
 
 `getStatus()` é somente leitura e retorna disponibilidade das integrações e do
 diário. Não cria documentos nem aciona métodos de outro módulo. As consultas de
@@ -159,8 +190,8 @@ O Explorador usa `saveLocationRecord`, `listPlaceNotes` (com `dateLabel`) e
 módulo e nenhum documento do Jornal/Explorador é modificado pelo calendário.
 As integrações opcionais estão em `relationships.modules`, também declaradas em
 `relationships.recommends` para a compatibilidade nativa do Foundry 13. SmallTime
-continua como o requisito de instalação do relógio/iluminação adotado nesta mesa.
-Sem outros módulos QUEDAÇO, calendário, diário, luas, feriados e linhas do tempo
+é opcional; nenhum módulo é requisito obrigatório.
+Sem outros módulos, calendário, relógio, iluminação, diário, luas, feriados e linhas do tempo
 continuam disponíveis.
 ```js
 const api = game.modules.get('quedaco-calendario').api;
@@ -172,11 +203,14 @@ await api.switchTimeline('main'); // só Mestra
 await api.linkJournalToDay('JournalEntry.ID', {location:'Alberich',weather:'Chuva'});
 ```
 
-`npm ci` / `npm test`: 31 testes com calendário, contrato, migração, permissões, publicação/revogação,
+`npm ci` / `npm test`: 36 testes com calendário, contrato, iluminação nativa, permissões, publicação/revogação,
 migração, lixeira com duas confirmações, notificações, rascunhos, anexos, integração
 do jornal e ida/volta no tempo. Os testes usam substitutos de documentos Foundry.
 As telas lunar, solar e diário também foram renderizadas para conferência visual.
+`tools/preview-clock.mjs` testa interação real no navegador com substitutos Foundry;
+exige Playwright (ou `QUEDACO_PLAYWRIGHT_DIR` apontando para a instalação).
 
-Validação real com Mestra/jogadores e SmallTime permanece necessária: salvar um
+Validação real com Mestra/jogadores permanece necessária: testar iluminação com
+SmallTime desativado, depois compatibilidade com ele ativo, salvar um
 rascunho como jogador, publicar para dois destinatários, despublicar, verificar
 permissões, usar a lixeira e trocar linhas do tempo em um mundo de teste.

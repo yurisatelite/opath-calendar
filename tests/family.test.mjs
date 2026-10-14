@@ -15,9 +15,11 @@ test('descritor segue o protocolo v1 e é congelado',()=>{
   assert.equal(typeof d.open,'function');assert.equal(typeof d.getStatus,'function');
 });
 
-test('capabilities ausentes não são anunciadas e SmallTime ausente desativa daylightControl',()=>{
+test('capabilities ausentes não são anunciadas e iluminação nativa dispensa SmallTime',()=>{
   const d=createDescriptor({id:'quedaco-calendario'},{open(){},setSmallTimeSceneLink(){}},()=>({ready:true}),false);
   assert.equal(d.capabilities.calendar,true);assert.equal(d.capabilities.currentTime,false);assert.equal(d.capabilities.daylightControl,false);
+  const native=createDescriptor({id:'quedaco-calendario'},{setSceneDaylight(){}},()=>({ready:true}));
+  assert.equal(native.capabilities.daylightControl,true);
 });
 
 test('migração mantém diário, páginas, datas e permissões, sem alterar documentos do Jornal',async()=>{

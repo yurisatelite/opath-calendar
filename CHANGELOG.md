@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.4.0 — 14/10/2026 — Relógio nativo e interface limpa
+
+- SmallTime deixa de ser obrigatório. Relógio nativo com sol/lua arrastável, hora do mundo, ±10 minutos e ±1 hora; jogadores somente leitura.
+- Iluminação opt-in por cena, amanhecer/anoitecer graduais e limites configuráveis. Somente a Mestra ativa escreve, respeitando o bloqueio da cena. SmallTime ativo tem prioridade para evitar dois controladores.
+- Painel independente com data e luas, detecção de obstáculos (incluindo Nexus), arrastar/posição local e reposicionamento automático. Recolhimento quando não há espaço livre completo.
+- Filtros recolhidos, controles de hora em aba própria, histórico/viagem no tempo recolhidos e seções vazias removidas do painel do dia.
+- ID `quedaco-calendario`, `contractVersion: 1`. Capabilities: `calendar`, `currentDate`, `currentTime`, `advanceTime`, `daylightControl`, `campaignDiary`, `moonPhases`, `holidays`, `timelines`, `placeNotes`.
+- Métodos públicos novos: `getClockStatus`, `setClockMode`, `setDaylightConfig`, `setSceneDaylight`, `setTimeOfDay`. Métodos anteriores preservados: `open`, `getStatus`, `getCurrentDate`, `getCurrentTime`, `worldTimeToDate`, `dateToWorldTime`, `advanceTime`, `setDate`, `calibrate`, `getSmallTimeStatus`, `setSmallTimeSceneLink`, `getMoonPhases`, `getHolidays`, `lunarAge`, `getTimelines`, `switchTimeline`, `getDayRecords`, `linkJournalToDay`, `saveLocationRecord`, `listPlaceNotes`, `openRecord`.
+- Integrações opcionais: SmallTime (compatibilidade), QUEDAÇO principal, Jornal da Queda e Explorador (APIs públicas). Sem qualquer outro módulo: calendário, relógio/iluminação, diário, luas, feriados e linhas do tempo continuam disponíveis.
+- Implementação própria inspirada no SmallTime; sem importação de arquivos de outro módulo ou cópia integral. Nenhum documento de Jornal/Explorador foi alterado.
+- 36 testes automatizados e interação em navegador com slider/iluminação, jogador, arrastar e Nexus simulado em 375px. Teste em mundo Foundry real ainda necessário.
+
 ## 0.3.3 — 14/10/2026 — Ajustes compactos de interface
 
 - Data e luas acima do SmallTime, limitadas à largura do relógio e à tela, acompanhando seu movimento.

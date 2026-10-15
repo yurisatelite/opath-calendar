@@ -34,7 +34,7 @@ Hooks.once('init',()=>{
   register('timelines',{type:Object,default:{activeId:'main',branches:[]}});
   register('diaryBooks',{type:Object,default:{}});
   register('legacyMigrated',{type:Boolean,default:false});
-  register('clockMode',{name:'Relógio e iluminação',hint:'SmallTime ativo tem prioridade para evitar controladores concorrentes. Desative-o para usar o painel nativo.',type:String,config:true,choices:{auto:'Automático — nativo sem SmallTime',native:'Nativo (SmallTime deve estar desativado)',off:'Sem controle de iluminação'},default:'auto'});
+  register('clockMode',{type:String,choices:{auto:'Automático',native:'Nativo',off:'Desativado'},default:'auto'});
   register('daylight',{type:Object,default:DEFAULT_DAYLIGHT});
   register('showClockPanel',{name:'Mostrar painel compacto',type:Boolean,scope:'client',config:true,default:true});
   register('panelPosition',{type:Object,scope:'client',default:{}});
@@ -159,7 +159,7 @@ Hooks.once('ready',async()=>{
         if(action==='trash'){this.trash=!this.trash;this.tab='journal';}
         if(action==='all')return this.openAll(context);
         if(action==='current'){await clock.setDate({...context.selected,hour:current.hour,minute:current.minute,second:current.second});this.viewYear=null;this.selectedDay=null;notifyHoliday();}
-        if(action==='darkness'){await daylight.setSceneDaylight(game.scenes?.active??canvas?.scene,!daylight.getClockStatus().linked);}
+        if(action==='darkness'){const enabled=!daylight.getClockStatus().linked;if(daylight.getClockStatus().engine==='off')await daylight.setClockMode('auto');await daylight.setSceneDaylight(game.scenes?.active??canvas?.scene,enabled);}
         if(action==='newspaper')return openNewspaper(game);
         if(action==='image'){
           const picker=new foundry.applications.apps.FilePicker.implementation({type:'image',current:this.draft?.image,callback:path=>{this.captureDraft();this.draft.image=safeImage(path);this.skipCapture=true;this.render({force:true});}});
@@ -178,8 +178,6 @@ Hooks.once('ready',async()=>{
         return game.settings.set(ID,'mode',e.target.value);
       }));
       root.querySelector('[name="branch"]')?.addEventListener('change',e=>guard(async()=>{await timelines.switchTo(e.target.value);this.selectedDay=null;this.viewYear=null;notifyHoliday();refresh();}));
-      root.querySelector('[data-clock-mode]')?.addEventListener('change',e=>guard(()=>daylight.setClockMode(e.target.value)));
-      const modeSelect=root.querySelector('[data-clock-mode]');if(modeSelect)modeSelect.value=game.settings.get(ID,'clockMode');
       root.querySelector('[data-time-form]')?.addEventListener('submit',e=>{e.preventDefault();const [hour,minute]=String(new FormData(e.target).get('time')).split(':').map(Number);guard(()=>daylight.setTimeOfDay(hour*3600+minute*60));});
       root.querySelector('[data-light-form]')?.addEventListener('submit',e=>{e.preventDefault();const data=new FormData(e.target);guard(async()=>{await daylight.setDaylightConfig(Object.fromEntries(Object.keys(DEFAULT_DAYLIGHT).map(key=>[key,Number(data.get(key))])));ui.notifications.info('Iluminação configurada.');refresh();});});
       for(const name of ['location','weather','author'])root.querySelector('[data-filter="'+name+'"]')?.addEventListener('change',e=>{this.filters[name]=e.target.value;this.render({force:true});});

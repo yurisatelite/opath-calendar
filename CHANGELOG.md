@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.4.1 — 14/10/2026 — Arraste estável e iluminação simplificada
+
+- Painel manual não é mais repelido por áreas vazias dos contêineres de controles. Evita obstáculos automaticamente apenas antes de uma posição manual ou depois de ↺.
+- Slider e botões internos usam intervalos de 30 minutos. O painel aguarda todas as gravações pendentes antes de redesenhar, evitando o retorno ao horário anterior com latência.
+- Retirado seletor de controlador. Mantidos botão de ativar/desativar por cena, aviso de SmallTime ativo e configurações de amanhecer/anoitecer/escuridão.
+- 37 testes; teste de interação inclui latência artificial e arraste até a borda esquerda.
+- Propostas visuais de estações e diário ainda não implementadas no módulo; aguardam aprovação. Dados e API QUEDAÇO v1 preservados.
+
 ## 0.4.0 — 14/10/2026 — Relógio nativo e interface limpa
 
 - SmallTime deixa de ser obrigatório. Relógio nativo com sol/lua arrastável, hora do mundo, ±10 minutos e ±1 hora; jogadores somente leitura.

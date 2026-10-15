@@ -1,4 +1,4 @@
-# QUEDAÇO - Calendário — 0.4.0
+# QUEDAÇO - Calendário — 0.4.1
 
 Calendário, relógio nativo e diário de campanha para Foundry VTT 13. **SmallTime é opcional**.
 Integrações opcionais com **QUEDAÇO principal**, **QUEDAÇO - Jornal da Queda** e
@@ -24,7 +24,7 @@ o pacote de transição `opath-calendar`; ele não instala o novo ID automaticam
 O botão **QUEDAÇO - Calendário** está nos controles de Notas e no painel compacto.
 O painel reúne data, duas luas e relógio nativo, sem ocupar uma coluna lateral.
 Evita os retângulos visíveis de Nexus, jogadores, controles e janelas; pode ser
-arrastado por ⠿, com posição salva por usuário/navegador. ↺ retoma o posicionamento
+arrastado por ⠿, com posição manual respeitada até os limites da tela, salva por usuário/navegador. ↺ retoma o posicionamento
 automático. Se não houver espaço para o painel completo, recolhe para um atalho.
 Filtros ficam recolhidos, e horário/iluminação têm aba própria. Histórico e viagem
 no tempo ficam em uma seção recolhida do painel do dia.
@@ -52,11 +52,11 @@ de 3 pixels na base, sem fundo ou texto vermelho. A seleção de consulta usa ap
 ## Relógio nativo e iluminação
 
 1. Atualize, desative SmallTime em Gerenciar módulos e recarregue o mundo.
-2. O painel nativo aparece com data/luas, sol/lua arrastável e botões de ±10 minutos / ±1 hora.
-3. Abra **Relógio e iluminação** e clique **Ligar iluminação nesta cena**.
+2. O painel nativo aparece com data/luas, sol/lua arrastável em intervalos de meia hora e botões de ±30 minutos / ±1 hora.
+3. Abra **Relógio e iluminação** e clique **Ativar iluminação nesta cena**.
 4. Configure amanhecer/anoitecer e escuridão diurna/noturna. As transições são graduais.
 
-Arrastar o sol/lua muda hora e minuto dentro do mesmo dia; os botões podem cruzar
+Arrastar o sol/lua escolhe entre 00:00 e 23:30 dentro do mesmo dia; os botões podem cruzar
 a meia-noite. Apenas a Mestra altera o tempo. Jogadores veem o painel em leitura.
 As horas permanecem de 24h. Não há progressão automática em tempo real nesta versão.
 
@@ -69,8 +69,9 @@ horários solares são configurações do mundo, o vínculo é individual por ce
 Com SmallTime ativo, ele tem prioridade exclusiva de iluminação; nosso painel
 mostra apenas data/luas e evita o relógio externo. Não escondemos nem alteramos
 o painel ou flags do SmallTime. Para o modo nativo, desative SmallTime; não precisa
-desinstalá-lo. O modo “Desativado no Calendário” suspende nosso controlador,
-mantendo o relógio visível, mas não desativa controles de outros módulos.
+desinstalá-lo. A interface traz apenas o botão de ativar/desativar por cena e um
+aviso quando SmallTime está ativo. Amanhecer, anoitecer e níveis de escuridão permanecem.
+A API de seleção de modo continua disponível para compatibilidade com integrações antigas.
 
 Implementação própria inspirada na interação do SmallTime, não uma cópia integral
 do módulo. As duas luas continuam como indicadores de fase: não calculam a maré
@@ -203,7 +204,7 @@ await api.switchTimeline('main'); // só Mestra
 await api.linkJournalToDay('JournalEntry.ID', {location:'Alberich',weather:'Chuva'});
 ```
 
-`npm ci` / `npm test`: 36 testes com calendário, contrato, iluminação nativa, permissões, publicação/revogação,
+`npm ci` / `npm test`: 37 testes com calendário, contrato, iluminação nativa, permissões, publicação/revogação,
 migração, lixeira com duas confirmações, notificações, rascunhos, anexos, integração
 do jornal e ida/volta no tempo. Os testes usam substitutos de documentos Foundry.
 As telas lunar, solar e diário também foram renderizadas para conferência visual.

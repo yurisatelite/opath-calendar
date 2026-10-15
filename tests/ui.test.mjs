@@ -9,7 +9,7 @@ test('Foundry bootstrap and template render both calendars, GM controls and safe
   const f = await fixture();
   const api=f.game.modules.get('quedaco-calendario').api;
   assert.equal(api.id,'quedaco-calendario');assert.equal(api.family,'quedaco');assert.equal(api.contractVersion,1);
-  assert.equal(api.title,'QUEDAÇO - Calendário');assert.equal(api.version,'0.4.0');
+  assert.equal(api.title,'QUEDAÇO - Calendário');assert.equal(api.version,'0.4.1');
   assert.ok(f.emitted.some(([hook,descriptor])=>hook==='quedaco:register'&&descriptor===api));
   assert.equal(f.game.modules.has('quedaco'),false);
   for(const [cap,value]of Object.entries(api.capabilities))if(value)assert.equal(typeof api[CAPABILITY_METHODS[cap]],'function');
@@ -92,6 +92,7 @@ test('Foundry bootstrap and template render both calendars, GM controls and safe
   assert.equal(api.capabilities.daylightControl,true);
   f.app.tab='clock';html=template(await f.app._prepareContext());
   assert.ok(html.includes('data-light-form'));assert.ok(html.includes('data-time-form'));
+  assert.ok(!html.includes('data-clock-mode'));assert.ok(html.includes('Ativar iluminação')||html.includes('Desativar iluminação'));
   assert.ok(html.includes('QUEDAÇO nativo'));
   f.game.user=f.game.users.get('alice');html=template(await f.app._prepareContext());
   assert.ok(!html.includes('data-light-form'));assert.ok(!html.includes('data-time-form'));

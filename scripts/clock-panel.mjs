@@ -2,6 +2,7 @@ import {MODULE_ID as ID} from './identity.mjs';
 import {moons,formatDate} from './calendar.mjs';
 import {escapeHTML} from './record-model.mjs';
 import {darknessAt} from './daylight.mjs';
+export const halfHourMinute=minute=>Math.max(0,Math.min(1410,Math.round(minute/30)*30));
 
 export function avoidObstacles(preferred,size,obstacles,viewport) {
   const gap=8,maxX=Math.max(gap,viewport.width-size.width-gap),maxY=Math.max(gap,viewport.height-size.height-gap);
@@ -15,16 +16,21 @@ export function avoidObstacles(preferred,size,obstacles,viewport) {
   return {...(free??first),clear:!!free};
 }
 export function createClockPanel({game,clock,daylight,open,onError}) {
-  let panel,observer,resizeObserver,timer,scrubTimer,dragging=false,scrubbing=false,pendingMinute=null,busy=false;
+  let panel,observer,resizeObserver,timer,scrubTimer,dragging=false,scrubbing=false,pendingMinute=null,writePromise=null,settling=false;
   const attempt=fn=>Promise.resolve().then(fn).catch(onError);
   function position(){
-    if(!panel||dragging)return;
+    if(!panel||dragging||scrubbing||settling)return;
     panel.classList.remove('is-crowded');
     const width=Math.min(200,Math.max(0,innerWidth-16));panel.style.width=width+'px';
     const rect=panel.getBoundingClientRect(),saved=game.settings.get(ID,'panelPosition');
     const external=daylight.getClockStatus().engine==='smalltime'?document.getElementById('smalltime-app'):null;
     const anchor=external?.getBoundingClientRect();
     const preferred=saved&&Number.isFinite(saved.x)&&Number.isFinite(saved.y)?saved:anchor?{x:anchor.left,y:anchor.top-rect.height-6}:{x:16,y:innerHeight-rect.height-180};
+    // Manual placement overrides avoidance of broad, partially empty UI containers.
+    if(saved&&Number.isFinite(saved.x)&&Number.isFinite(saved.y)){
+      const target=avoidObstacles(preferred,rect,[],{width:innerWidth,height:innerHeight});
+      panel.style.left=target.x+'px';panel.style.top=target.y+'px';return;
+    }
     const selectors='#players,#hotbar,#sidebar,#controls,#scene-controls,#notifications,#smalltime-app,[id*="nexus" i],[class*="nexus" i],.application,.window-app,[data-quedaco-overlay]';
     const roots=[...document.body.children].filter(el=>['fixed','absolute'].includes(getComputedStyle(el).position)&&el.getBoundingClientRect().width<innerWidth*0.8&&el.getBoundingClientRect().height<innerHeight*0.8);
     const nexusLabels=[...document.querySelectorAll('button,a')].filter(el=>/FA\s*Nexus/i.test(el.textContent??''));
@@ -36,25 +42,38 @@ export function createClockPanel({game,clock,daylight,open,onError}) {
     for(const [key,value]of [['left',target.x+'px'],['top',target.y+'px']])if(panel.style[key]!==value)panel.style[key]=value;
   }
   function schedule(){clearTimeout(timer);timer=setTimeout(position,80);}
-  async function flush(){
-    if(busy)return;busy=true;
-    try{while(pendingMinute!==null){const value=pendingMinute;pendingMinute=null;await daylight.setTimeOfDay(value*60);}}
-    catch(error){pendingMinute=null;onError(error);}
-    finally{busy=false;}
+  function flush(){
+    if(writePromise)return writePromise;
+    writePromise=(async()=>{
+      while(pendingMinute!==null){const value=pendingMinute;pendingMinute=null;await daylight.setTimeOfDay(value*60);}
+    })().catch(error=>{pendingMinute=null;onError(error);}).finally(()=>{writePromise=null;});
+    return writePromise;
   }
   function bind(){
     panel.querySelector('[data-clock-open]').addEventListener('click',()=>open('calendar'));
     panel.querySelector('[data-clock-settings]').addEventListener('click',()=>open('clock'));
     panel.querySelector('[data-clock-reset]').addEventListener('click',()=>attempt(async()=>{await game.settings.set(ID,'panelPosition',{});position();}));
-    panel.querySelectorAll('[data-clock-advance]').forEach(el=>el.addEventListener('click',()=>attempt(()=>clock.advanceTime(Number(el.dataset.clockAdvance)))));
+    panel.querySelectorAll('[data-clock-advance]').forEach(el=>{
+      if(Math.abs(Number(el.dataset.clockAdvance))===600){el.dataset.clockAdvance=String(Math.sign(Number(el.dataset.clockAdvance))*1800);el.title=Number(el.dataset.clockAdvance)>0?'Mais meia hora':'Menos meia hora';}
+      el.addEventListener('click',()=>attempt(()=>{
+        const seconds=Number(el.dataset.clockAdvance),date=clock.getCurrentDate(),current=date.hour*3600+date.minute*60+date.second;
+        const target=seconds>0?(Math.floor(current/1800)+seconds/1800)*1800:(Math.ceil(current/1800)+seconds/1800)*1800;
+        return clock.advanceTime(target-current);
+      }));
+    });
     const slider=panel.querySelector('[data-clock-slider]');
+    if(slider){slider.max='1410';slider.step='30';slider.value=String(halfHourMinute(Number(slider.value)));}
     slider?.addEventListener('input',()=>{
-      scrubbing=true;pendingMinute=Number(slider.value);paintTime(pendingMinute*60);
+      scrubbing=true;pendingMinute=halfHourMinute(Number(slider.value));slider.value=String(pendingMinute);paintTime(pendingMinute*60);
       // Live clock/map updates are serialized; intermediate pointer positions coalesce.
       if(!scrubTimer)scrubTimer=setTimeout(()=>{scrubTimer=null;attempt(flush);},100);
     });
-    slider?.addEventListener('change',()=>{clearTimeout(scrubTimer);scrubTimer=null;scrubbing=false;pendingMinute=Number(slider.value);attempt(async()=>{await flush();update();});});
-    slider?.addEventListener('blur',()=>{scrubbing=false;update();});
+    const finish=()=>{
+      clearTimeout(scrubTimer);scrubTimer=null;pendingMinute=halfHourMinute(Number(slider.value));settling=true;
+      attempt(async()=>{try{await flush();}finally{scrubbing=false;settling=false;update();}});
+    };
+    slider?.addEventListener('change',finish);
+    slider?.addEventListener('blur',()=>{if(scrubbing&&!settling)finish();});
     const handle=panel.querySelector('[data-clock-grip]');
     handle.addEventListener('pointerdown',e=>{
       if(e.button!==0)return;e.preventDefault();dragging=true;
@@ -66,9 +85,10 @@ export function createClockPanel({game,clock,daylight,open,onError}) {
     });
   }
   function paintTime(seconds){
+    seconds=halfHourMinute(seconds/60)*60;
     const status=daylight.getClockStatus(),night=darknessAt(seconds,status.config),hour=Math.floor(seconds/3600),minute=Math.floor(seconds%3600/60);
     const track=panel.querySelector('.quedaco-sky');if(!track)return;
-    track.style.setProperty('--sun-position',(seconds/86340*100)+'%');
+    track.style.setProperty('--sun-position',(seconds/84600*100)+'%');
     track.style.background=night<0.15?'#23bdd8':night<0.65?'linear-gradient(#a8463d,#cc8551)':'linear-gradient(#141c39,#354366)';
     const sun=panel.querySelector('.quedaco-sun');sun.textContent=night<0.5?'☀':'☾';sun.classList.toggle('is-night',night>=0.5);
     panel.querySelector('[data-clock-time]').textContent=String(hour).padStart(2,'0')+':'+String(minute).padStart(2,'0');
@@ -86,7 +106,7 @@ export function createClockPanel({game,clock,daylight,open,onError}) {
       if(typeof ResizeObserver!=='undefined'){resizeObserver=new ResizeObserver(schedule);resizeObserver.observe(document.body);}
       globalThis.addEventListener?.('resize',schedule);
     }
-    if(scrubbing||dragging)return;
+    if(scrubbing||dragging||settling)return;
     const phases=moons(date.absoluteDay),label=date.weekday+' · Dia '+date.day+' de '+date.cycleName+' · '+Math.abs(date.year)+' '+(date.year<0?'A.F.':'D.F.');
     panel.innerHTML='<div class="quedaco-clock-tools"><button type="button" data-clock-grip title="Arrastar painel" aria-label="Arrastar painel">⠿</button><button type="button" data-clock-reset title="Reposicionar automaticamente">↺</button><button type="button" data-clock-settings title="Relógio e iluminação">⚙</button></div><button type="button" class="quedaco-clock-date" data-clock-open title="'+escapeHTML(formatDate(date))+'"><span>'+escapeHTML(label)+'</span><span class="opath-compact-moons">'+phases.map(m=>'<svg class="opath-moon-icon" style="color:'+m.color+'" viewBox="0 0 24 24" role="img" aria-label="'+escapeHTML(m.name+': '+m.phase)+'"><title>'+escapeHTML(m.name+': '+m.phase)+'</title><use href="modules/quedaco-calendario/assets/moons.svg#'+m.icon+'"></use></svg>').join('')+'</span></button>'+(native?'<div class="quedaco-native-clock"><div class="quedaco-sky"><span class="quedaco-sun" aria-hidden="true"></span><input type="range" min="0" max="1439" step="1" value="'+(date.hour*60+date.minute)+'" data-clock-slider aria-label="Hora do dia" '+(!game.user.isGM?'disabled':'')+'></div><div class="quedaco-clock-buttons">'+(game.user.isGM?'<button type="button" data-clock-advance="-3600" title="Menos uma hora">«</button><button type="button" data-clock-advance="-600" title="Menos dez minutos">‹</button>':'')+'<button type="button" data-clock-time title="Abrir relógio e iluminação">'+date.hour+':'+date.minute+'</button>'+(game.user.isGM?'<button type="button" data-clock-advance="600" title="Mais dez minutos">›</button><button type="button" data-clock-advance="3600" title="Mais uma hora">»</button>':'')+'</div></div>':'');
     bind();panel.querySelector('[data-clock-time]')?.addEventListener('click',()=>open('clock'));

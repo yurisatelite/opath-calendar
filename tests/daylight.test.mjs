@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {createDaylight,darknessAt,validateDaylight} from '../scripts/daylight.mjs';
 import {createClock} from '../scripts/integration.mjs';
-import {avoidObstacles} from '../scripts/clock-panel.mjs';
+import {avoidObstacles,halfHourMinute} from '../scripts/clock-panel.mjs';
 import {mockWorld} from '../tools/mock-world.mjs';
 
 function fixture(){
@@ -53,4 +53,7 @@ test('compact panel avoids Nexus, players and other overlays within narrow viewp
   const p=avoidObstacles({x:15,y:340},size,[nexus,players],{width:375,height:650});
   assert.equal(p.clear,true);assert.ok(p.x>=8&&p.x+size.width<=367);assert.ok(p.y>=8&&p.y+size.height<=642);
   for(const r of [nexus,players])assert.ok(p.x>=r.right||p.x+size.width<=r.left||p.y>=r.bottom||p.y+size.height<=r.top);
+});
+test('compact clock snaps to half-hour slots without crossing midnight',()=>{
+  for(const [minute,expected]of [[0,0],[474,480],[721,720],[750,750],[1439,1410]])assert.equal(halfHourMinute(minute),expected);
 });

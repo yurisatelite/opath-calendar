@@ -1,11 +1,11 @@
 {
   "id": "quedaco-calendario",
   "title": "QUEDAÇO - Calendário",
-  "description": "Calendário lunar e solar de Opath, ciclos, luas, feriados e registros da campanha. Relógio compartilhado com SmallTime.",
-  "version": "0.4.0",
+  "description": "Calendário lunar e solar de Opath, luas, feriados e diário de campanha. Relógio nativo e iluminação opcional por cena, compatível com SmallTime.",
+  "version": "0.4.1",
   "url": "https://github.com/yurisatelite/opath-calendar",
   "manifest": "https://github.com/yurisatelite/opath-calendar/releases/latest/download/quedaco-calendario.json",
-  "download": "https://github.com/yurisatelite/opath-calendar/releases/download/v0.4.0/quedaco-calendario.zip",
+  "download": "https://github.com/yurisatelite/opath-calendar/releases/download/v0.4.1/quedaco-calendario.zip",
   "authors": [
     {
       "name": "Yuri"
